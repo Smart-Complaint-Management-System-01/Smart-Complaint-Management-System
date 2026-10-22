@@ -9,4 +9,11 @@ class User(AbstractUser):
 
     email = models.EmailField("email address", unique=True)
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.USER)
-    
+    @property
+    def is_admin_role(self):
+        return self.role == self.Role.ADMIN
+
+    def save(self, *args, **kwargs):
+        if self.is_superuser:  # createsuperuser accounts are always administrators
+            self.role = self.Role.ADMIN
+        super().save(*args, **kwargs)
