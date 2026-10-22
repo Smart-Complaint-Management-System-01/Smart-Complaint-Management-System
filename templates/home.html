@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h1>Smart Complaint Management System</h1>
+  <p>Lodge complaints, track their progress and get them resolved.</p>
+  {% if user.is_authenticated %}
+    <a class="btn btn-primary" href="{% if user.role == 'ADMIN' %}{% url 'complaints:admin_list' %}{% else %}{% url 'complaints:my_list' %}{% endif %}">Go to my dashboard</a>
+  {% else %}
+    <a class="btn btn-primary" href="{% url 'accounts:login' %}">Login</a>
+    <a class="btn" href="{% url 'accounts:register' %}">Create an account</a>
+  {% endif %}
+</section>
+{% endblock %}

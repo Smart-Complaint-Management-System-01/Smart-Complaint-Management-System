@@ -1,0 +1,41 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Smart Complaint Management System{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+<header class="navbar">
+  <a class="brand" href="{% url 'home' %}">Smart Complaint Management</a>
+  <nav>
+    {% if user.is_authenticated %}
+      {% if user.role == "ADMIN" %}
+        <a href="{% url 'complaints:admin_list' %}">Manage Complaints</a>
+      {% else %}
+        <a href="{% url 'complaints:new' %}">Lodge Complaint</a>
+        <a href="{% url 'complaints:my_list' %}">My Complaints</a>
+      {% endif %}
+      <form method="post" action="{% url 'accounts:logout' %}" class="inline-form">
+        {% csrf_token %}
+        <button type="submit" class="link-button">Logout ({{ user.first_name|default:user.email }})</button>
+      </form>
+    {% else %}
+      <a href="{% url 'accounts:login' %}">Login</a>
+      <a href="{% url 'accounts:register' %}">Register</a>
+    {% endif %}
+  </nav>
+</header>
+<main class="container">
+  {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}<li class="message {{ message.tags }}">{{ message }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+<script src="{% static 'js/main.js' %}"></script>
+</body>
+</html>
