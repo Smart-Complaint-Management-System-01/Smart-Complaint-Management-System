@@ -15,7 +15,7 @@ A web application where users lodge complaints and track their resolution, and a
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<org>/Smart-Complaint-Management-System-01.git
+git clone https://github.com/Smart-Complaint-Management-System-01/Smart-Complaint-Management-System.git
 cd Smart-Complaint-Management-System-01
 ```
 
