@@ -10,5 +10,8 @@ urlpatterns = [
     # FR-04 - Prajna
     path("complaints/new/", coming_soon, name="new"),
     # FR-08 - Rakshita
-    path("admin/complaints/", coming_soon, name="admin_list"),
+        # FR-08 - Rakshita
+    path("admin/complaints/", views.admin_list, name="admin_list"),
+    path("admin/complaints/<int:pk>/", views.admin_detail, name="admin_detail"),
+    path("admin/complaints/<int:pk>/status/", views.admin_update_status, name="admin_update_status"),
 ]
