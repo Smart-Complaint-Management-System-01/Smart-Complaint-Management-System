@@ -2,6 +2,8 @@ from django.urls import path
 
 from config.views import coming_soon
 
+from . import views
+
 app_name = "complaints"
 
 urlpatterns = [
