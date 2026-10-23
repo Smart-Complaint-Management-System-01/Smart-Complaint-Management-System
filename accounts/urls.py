@@ -11,6 +11,8 @@ urlpatterns = [
     path("register/", views.register, name="register"),
     # FR-02 - Prajna
     path("login/", coming_soon, name="login"),
-    # NFR-10 - 
+    # FR-03 - Rakshita
+    path("dashboard/", views.dashboard, name="dashboard"),
+    # NFR-10 - whole team, later
     path("logout/", coming_soon, name="logout"),
 ]
