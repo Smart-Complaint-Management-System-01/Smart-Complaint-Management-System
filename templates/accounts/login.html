@@ -1,0 +1,46 @@
+
+{% extends "base.html" %}
+
+{% block title %}Login | Smart Complaint Management System{% endblock %}
+
+{% block content %}
+<section class="card auth-card">
+  <h1>Login</h1>
+  <p>Sign in to lodge complaints and track their progress.</p>
+
+  <form method="post" action="{% url 'accounts:login' %}">
+    {% csrf_token %}
+
+    {% if request.GET.next %}
+      <input type="hidden" name="next" value="{{ request.GET.next }}">
+    {% endif %}
+
+    <div class="form-group">
+      <label for="email">Email address <span class="required">*</span></label>
+      <input
+        type="email"
+        id="email"
+        name="email"
+        autocomplete="email"
+        required
+        value="{{ request.POST.email|default:'' }}"
+      >
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password <span class="required">*</span></label>
+      <input
+        type="password"
+        id="password"
+        name="password"
+        autocomplete="current-password"
+        required
+      >
+    </div>
+
+    <button type="submit" class="btn btn-primary">Login</button>
+  </form>
+
+  <p>Don't have an account? <a href="{% url 'accounts:register' %}">Create an account</a></p>
+</section>
+{% endblock %}
