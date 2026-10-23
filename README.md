@@ -184,3 +184,15 @@ git push -u origin <your-branch>
 ## Sprint 1 scope
 
 FR-01 User Registration · FR-02 User Authentication · FR-03 Role-Based Access · FR-04 Lodge Complaint · FR-05 View Complaint Status · FR-08 Admin Complaint Management · NFR-03 Data Persistence · NFR-05 Usability · NFR-06 Validation Feedback · NFR-07 Authentication Security · NFR-08 Authorization · NFR-10 Session Security
+
+## Performance testing (NFR-01)
+
+- **Requirement:** normal requests complete within 3 seconds.
+- **Normal load used in tests:** 20 users, 300 complaints, one request at a time.
+- **Run:** `python manage.py test complaints.tests.test_performance -v 2`
+  (prints the time of each page).
+- **Finding slow requests:** every response has an `X-Response-Time` header, and
+  each request is written to `logs/performance.log`. Requests over 3 s are
+  logged as `WARNING: SLOW REQUEST`. To list them:
+  `Select-String "SLOW REQUEST" logs\performance.log` (PowerShell).
+- **Changing the limit:** `SLOW_REQUEST_SECONDS` in `config/settings.py`.
