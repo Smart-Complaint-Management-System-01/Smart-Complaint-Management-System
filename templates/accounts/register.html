@@ -3,9 +3,12 @@
 {% block title %}Create an account | Smart Complaint Management System{% endblock %}
 
 {% block content %}
-<section class="card">
-  <h1>Create an account</h1>
-  <p>Register to submit and track your complaints.</p>
+<section class="card registration-card" aria-labelledby="registration-title">
+  <div class="registration-heading">
+    <span class="registration-kicker">Smart Complaint Management</span>
+    <h1 id="registration-title">Create your account</h1>
+    <p>Register to submit complaints and follow their progress in one place.</p>
+  </div>
 
   <form method="post" action="{% url 'accounts:register' %}">
     {% csrf_token %}
@@ -24,6 +27,6 @@
     <button class="btn btn-primary" type="submit">Create account</button>
   </form>
 
-  <p>Already have an account? <a href="{% url 'accounts:login' %}">Log in</a>.</p>
+  <p class="registration-login">Already have an account? <a href="{% url 'accounts:login' %}">Log in</a>.</p>
 </section>
 {% endblock %}
