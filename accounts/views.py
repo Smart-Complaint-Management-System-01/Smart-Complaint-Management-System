@@ -1,14 +1,45 @@
-
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_not_required, login_required
+from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
+
+from .forms import RegistrationForm
 
 
+# ---- FR-01 (Pallavi) ----
+@login_not_required
+@require_http_methods(["GET", "POST"])
+def register(request):
+    if request.method == "POST":
+        form = RegistrationForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    form.save()
+            except IntegrityError:
+                form.add_error(
+                    "email",
+                    "An account with this email address or username already exists.",
+                )
+            else:
+                messages.success(
+                    request,
+                    "Your account has been created successfully.",
+                )
+                return redirect("accounts:register")
+    else:
+        form = RegistrationForm()
+
+    return render(request, "accounts/register.html", {"form": form})
+
+
+# ---- FR-02 (Prajna) ----
+@login_not_required
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect("home")
+        return redirect("accounts:dashboard")
 
     if request.method == "POST":
         email = request.POST.get("email", "").strip()
@@ -24,7 +55,7 @@ def login_view(request):
             if next_url and next_url.startswith("/") and not next_url.startswith("//"):
                 return redirect(next_url)
 
-            return redirect("home")
+            return redirect("accounts:dashboard")
 
         messages.error(request, "Invalid email or password.")
 
@@ -38,7 +69,7 @@ def logout_view(request):
     return redirect("home")
 
 
-# FR-03 - Rakshita
+# ---- FR-03 (Rakshita) ----
 @login_required
 def dashboard(request):
     if request.user.is_admin_role:

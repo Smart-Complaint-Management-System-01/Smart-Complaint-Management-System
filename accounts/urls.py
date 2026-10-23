@@ -9,7 +9,7 @@ app_name = "accounts"
 
 urlpatterns = [
     # FR-01 - Pallavi
-    path("register/", coming_soon, name="register"),
+    path("register/", views.register, name="register"),
     # FR-02 - Prajna
     path("login/", login_view, name="login"),
     # FR-03 - Rakshita
