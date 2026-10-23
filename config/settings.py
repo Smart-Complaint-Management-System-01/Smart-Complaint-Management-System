@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'config.middleware.ResponseTimeMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -142,3 +143,23 @@ AUTH_USER_MODEL = "accounts.User"      # must be set BEFORE the first migrate
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "accounts:dashboard"
 LOGOUT_REDIRECT_URL = "home"
+
+# ---- NFR-01: response time ----
+SLOW_REQUEST_SECONDS = 3.0
+
+(BASE_DIR / "logs").mkdir(exist_ok=True)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"perf": {"format": "{asctime} {levelname} {message}", "style": "{"}},
+    "handlers": {
+        "perf_file": {
+            "class": "logging.FileHandler",
+            "filename": str(BASE_DIR / "logs" / "performance.log"),
+            "formatter": "perf",
+        },
+    },
+    "loggers": {
+        "performance": {"handlers": ["perf_file"], "level": "INFO", "propagate": False},
+    },
+}
