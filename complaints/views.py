@@ -7,6 +7,34 @@ from accounts.decorators import admin_required
 
 from .models import Complaint
 from .services import NEXT_STATUS, InvalidTransition, change_status
+from django.contrib.auth.decorators import login_required
+
+from .forms import ComplaintForm
+
+# NFR-06 - Validation Feedback
+@login_required
+def new_complaint(request):
+    if request.method == "POST":
+        form = ComplaintForm(request.POST)
+
+        if form.is_valid():
+            complaint = form.save(commit=False)
+            complaint.user = request.user
+            complaint.save()
+
+            messages.success(
+                request,
+                "Your complaint was submitted successfully."
+            )
+            return redirect("complaints:my_list")
+    else:
+        form = ComplaintForm()
+
+    return render(
+        request,
+        "complaints/new.html",
+        {"form": form},
+    )
 
 
 # ---- FR-08: Admin complaint management (Rakshita) ----

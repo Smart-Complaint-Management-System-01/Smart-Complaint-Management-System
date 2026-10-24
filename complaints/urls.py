@@ -10,7 +10,7 @@ urlpatterns = [
     # FR-05 - Prajna
     path("complaints/", coming_soon, name="my_list"),
     # FR-04 - Prajna
-    path("complaints/new/", coming_soon, name="new"),
+    path("complaints/new/", views.new_complaint, name="new"),
     # FR-08 - Rakshita
         # FR-08 - Rakshita
     path("admin/complaints/", views.admin_list, name="admin_list"),

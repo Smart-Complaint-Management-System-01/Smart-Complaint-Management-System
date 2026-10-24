@@ -1,0 +1,29 @@
+
+{% extends "base.html" %}
+
+{% block title %}Lodge Complaint | Smart Complaint Management System{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1>Lodge a Complaint</h1>
+  <p>Enter the details of your complaint. Fields marked with an asterisk are required.</p>
+
+  <form method="post" action="{% url 'complaints:new' %}">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div role="alert">
+        {% for error in form.non_field_errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% for field in form %}
+      {% include "partials/form_field.html" with field=field %}
+    {% endfor %}
+
+    <button type="submit" class="btn btn-primary">Submit Complaint</button>
+  </form>
+</section>
+{% endblock %}
