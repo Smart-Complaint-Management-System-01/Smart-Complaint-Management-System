@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Lodge a Complaint | Smart Complaint Management System{% endblock %}
+
+{% block content %}
+  {% if complaint %}
+    <section class="card" aria-labelledby="submission-success">
+      <h1 id="submission-success">Complaint submitted successfully</h1>
+      <p class="message success" role="status">Your complaint has been submitted. Your complaint ID is <strong>{{ complaint.complaint_id }}</strong>.</p>
+      <h2>Submitted complaint</h2>
+      <dl>
+        <dt>Complaint ID</dt><dd>{{ complaint.complaint_id }}</dd>
+        <dt>Category</dt><dd>{{ complaint.get_category_display }}</dd>
+        <dt>Title</dt><dd>{{ complaint.title }}</dd>
+        <dt>Description</dt><dd>{{ complaint.description|linebreaksbr }}</dd>
+        <dt>Status</dt><dd>{{ complaint.get_status_display }}</dd>
+      </dl>
+      <a class="btn btn-primary" href="{% url 'complaints:new' %}">Submit another complaint</a>
+    </section>
+  {% else %}
+    <section class="card narrow">
+      <h1>Lodge a Complaint</h1>
+      <p class="muted">Provide the details below to submit your complaint.</p>
+      <form method="post">
+        {% csrf_token %}
+        {% include "partials/form_field.html" with field=form.category %}
+        {% include "partials/form_field.html" with field=form.title %}
+        {% include "partials/form_field.html" with field=form.description %}
+        <button class="btn btn-primary" type="submit">Submit complaint</button>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}
