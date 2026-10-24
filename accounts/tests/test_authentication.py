@@ -33,7 +33,7 @@ class AuthenticationTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("home"))
+        self.assertRedirects(response, reverse("accounts:dashboard"), fetch_redirect_response=False)
         self.assertTrue(response.wsgi_request.user.is_authenticated)
 
     def test_login_with_invalid_password(self):
