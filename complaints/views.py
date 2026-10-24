@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -7,6 +8,18 @@ from accounts.decorators import admin_required
 
 from .models import Complaint
 from .services import NEXT_STATUS, InvalidTransition, change_status
+
+
+# ---- FR-05: View my complaints (Prajna) ----
+@login_required
+def my_complaints(request):
+    complaints = Complaint.objects.filter(user=request.user)
+
+    return render(
+        request,
+        "complaints/my_complaints.html",
+        {"complaints": complaints},
+    )
 
 
 # ---- FR-08: Admin complaint management (Rakshita) ----

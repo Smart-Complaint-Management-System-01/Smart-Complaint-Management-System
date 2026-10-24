@@ -1,0 +1,56 @@
+
+{% extends "base.html" %}
+
+{% block title %}My Complaints | Smart Complaint Management System{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1>My Complaints</h1>
+  <p>View your submitted complaints and track their current status.</p>
+
+  {% if complaints %}
+    <div class="complaint-list">
+      {% for complaint in complaints %}
+        <article class="card">
+          <h2>{{ complaint.title }}</h2>
+
+          <p>
+            <strong>Complaint ID:</strong>
+            {{ complaint.complaint_id }}
+          </p>
+
+          <p>
+            <strong>Category:</strong>
+            {{ complaint.get_category_display }}
+          </p>
+
+          <p>
+            <strong>Status:</strong>
+            {{ complaint.get_status_display }}
+          </p>
+
+          <p>
+            <strong>Description:</strong>
+            {{ complaint.description }}
+          </p>
+
+          <p>
+            <strong>Submitted:</strong>
+            {{ complaint.created_at|date:"d M Y, H:i" }}
+          </p>
+
+          <p>
+            <strong>Last updated:</strong>
+            {{ complaint.updated_at|date:"d M Y, H:i" }}
+          </p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>You haven't submitted any complaints yet.</p>
+    <a class="btn btn-primary" href="{% url 'complaints:new' %}">
+      Lodge a Complaint
+    </a>
+  {% endif %}
+</section>
+{% endblock %}
