@@ -16,7 +16,7 @@ A web application where users lodge complaints and track their resolution, and a
 
 ```bash
 git clone https://github.com/Smart-Complaint-Management-System-01/Smart-Complaint-Management-System.git
-cd Smart-Complaint-Management-System-01
+cd Smart-Complaint-Management-System
 ```
 
 ### 2. Create and activate a virtual environment
@@ -135,7 +135,7 @@ config/          Project settings, root URLs, placeholder view
 accounts/        Custom User model (roles), registration, login, role decorators
 complaints/      Complaint model, lodge/view views, admin management, status workflow
 templates/       base.html, home.html, partials/, accounts/, complaints/
-static/          css/style.css, js/main.js
+static/          css/styles.css, js/main.js
 ```
 
 ## Roles
