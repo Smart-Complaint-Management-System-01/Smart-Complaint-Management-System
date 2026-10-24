@@ -18,10 +18,11 @@
       <a class="btn btn-primary" href="{% url 'complaints:new' %}">Submit another complaint</a>
     </section>
   {% else %}
-    <section class="card narrow">
+    <section class="card narrow form-wide">
       <h1>Lodge a Complaint</h1>
-      <p class="muted">Provide the details below to submit your complaint.</p>
-      <form method="post">
+      <p class="muted">Tell us what happened, where and when, so the right team can help.</p>
+      <p class="muted">Fields marked <span class="required">*</span> are required.</p>
+      <form method="post" data-once>
         {% csrf_token %}
         {% include "partials/form_field.html" with field=form.category %}
         {% include "partials/form_field.html" with field=form.title %}
@@ -30,4 +31,3 @@
       </form>
     </section>
   {% endif %}
-{% endblock %}
