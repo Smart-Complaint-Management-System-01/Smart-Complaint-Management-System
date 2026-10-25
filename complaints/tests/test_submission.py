@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.template import response
 from django.test import TestCase
 from django.urls import reverse
 
@@ -108,7 +109,8 @@ class ComplaintSubmissionTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Complaint.objects.count(), 0)
-        self.assertContains(response, "This field is required.")
+        self.assertContains(response, "Please enter a complaint title.")
+        self.assertContains(response, "Please enter a description of your complaint.")
 
     def test_model_generates_unique_id_and_initial_status(self):
         first = Complaint.objects.create(

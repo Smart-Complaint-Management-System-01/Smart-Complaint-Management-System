@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block title %}Lodge a Complaint | Smart Complaint Management System{% endblock %}
@@ -6,14 +7,22 @@
   {% if complaint %}
     <section class="card" aria-labelledby="submission-success">
       <h1 id="submission-success">Complaint submitted successfully</h1>
-      <p class="message success" role="status">Your complaint has been submitted. Your complaint ID is <strong>{{ complaint.complaint_id }}</strong>.</p>
+      <p class="message success" role="status">
+        Your complaint has been submitted. Your complaint ID is
+        <strong>{{ complaint.complaint_id }}</strong>.
+      </p>
       <h2>Submitted complaint</h2>
       <dl>
-        <dt>Complaint ID</dt><dd>{{ complaint.complaint_id }}</dd>
-        <dt>Category</dt><dd>{{ complaint.get_category_display }}</dd>
-        <dt>Title</dt><dd>{{ complaint.title }}</dd>
-        <dt>Description</dt><dd>{{ complaint.description|linebreaksbr }}</dd>
-        <dt>Status</dt><dd>{{ complaint.get_status_display }}</dd>
+        <dt>Complaint ID</dt>
+        <dd>{{ complaint.complaint_id }}</dd>
+        <dt>Category</dt>
+        <dd>{{ complaint.get_category_display }}</dd>
+        <dt>Title</dt>
+        <dd>{{ complaint.title }}</dd>
+        <dt>Description</dt>
+        <dd>{{ complaint.description|linebreaksbr }}</dd>
+        <dt>Status</dt>
+        <dd>{{ complaint.get_status_display }}</dd>
       </dl>
       <a class="btn btn-primary" href="{% url 'complaints:new' %}">Submit another complaint</a>
     </section>
@@ -22,11 +31,22 @@
       <h1>Lodge a Complaint</h1>
       <p class="muted">Tell us what happened, where and when, so the right team can help.</p>
       <p class="muted">Fields marked <span class="required">*</span> are required.</p>
-      <form method="post" data-once>
+
+      <form method="post" action="{% url 'complaints:new' %}" data-once>
         {% csrf_token %}
-        {% include "partials/form_field.html" with field=form.category %}
-        {% include "partials/form_field.html" with field=form.title %}
-        {% include "partials/form_field.html" with field=form.description %}
+
+        {% if form.non_field_errors %}
+          <div role="alert">
+            {% for error in form.non_field_errors %}
+              <p>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% for field in form %}
+          {% include "partials/form_field.html" with field=field %}
+        {% endfor %}
+
         <button class="btn btn-primary" type="submit">Submit complaint</button>
       </form>
     </section>

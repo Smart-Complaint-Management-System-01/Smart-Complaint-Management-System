@@ -1,6 +1,5 @@
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,16 +14,23 @@ from .models import Complaint
 from .services import NEXT_STATUS, InvalidTransition, change_status
 
 
-# FR-04: Complaint submission
+# FR-04 and NFR-06: Complaint submission and validation feedback
 @role_required(User.Role.USER)
 def new_complaint(request):
     if request.method == "POST":
         form = ComplaintForm(request.POST)
+
         if form.is_valid():
             with transaction.atomic():
                 complaint = form.save(commit=False)
                 complaint.user = request.user
                 complaint.save()
+
+            messages.success(
+                request,
+                "Your complaint was submitted successfully.",
+            )
+
             return redirect(
                 reverse(
                     "complaints:submission_confirmation",
@@ -37,10 +43,12 @@ def new_complaint(request):
     return render(request, "complaints/new.html", {"form": form})
 
 
+# FR-04: Submission confirmation
 @role_required(User.Role.USER)
 def submission_confirmation(request, complaint_id):
     complaint = get_object_or_404(
-        request.user.complaints, complaint_id=complaint_id
+        request.user.complaints,
+        complaint_id=complaint_id,
     )
     return render(
         request,
@@ -50,7 +58,7 @@ def submission_confirmation(request, complaint_id):
 
 
 # FR-05: View my complaints
-@login_required
+@role_required(User.Role.USER)
 def my_complaints(request):
     complaints = Complaint.objects.filter(user=request.user)
     return render(
@@ -71,7 +79,8 @@ def admin_list(request):
 @admin_required
 def admin_detail(request, pk):
     complaint = get_object_or_404(
-        Complaint.objects.select_related("user"), pk=pk
+        Complaint.objects.select_related("user"),
+        pk=pk,
     )
     return render(
         request,
@@ -87,6 +96,7 @@ def admin_detail(request, pk):
 @require_POST
 def admin_update_status(request, pk):
     complaint = get_object_or_404(Complaint, pk=pk)
+
     try:
         change_status(complaint, request.POST.get("status"))
     except InvalidTransition as exc:
@@ -94,6 +104,7 @@ def admin_update_status(request, pk):
     else:
         messages.success(
             request,
-            f"Status updated to {complaint.get_status_display()}.",
+            "Status updated to " + complaint.get_status_display() + ".",
         )
+
     return redirect("complaints:admin_detail", pk=pk)
