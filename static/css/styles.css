@@ -192,3 +192,21 @@ th, td { padding: .6rem .75rem; border-bottom: 1px solid var(--border); text-ali
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+/* NFR-05 usability */
+.form-wide { max-width: 640px; }
+.form-group textarea { resize: vertical; }
+
+/* complaint confirmation details */
+dl { display: grid; grid-template-columns: max-content 1fr; gap: .4rem 1.25rem; }
+dt { color: var(--muted); font-weight: 650; }
+dd { margin: 0; }
+
+/* lists and pagination */
+.complaint-list { display: grid; gap: 1rem; margin-top: 1.25rem; }
+.pagination { margin-top: 1rem; }
+
+@media (max-width: 600px) {
+  table { display: block; overflow-x: auto; }
+  dl { grid-template-columns: 1fr; }
+  dd { margin-bottom: .6rem; }
+}

@@ -91,7 +91,7 @@ class ComplaintValidationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, "/complaints/")
+        self.assertRegex(response.url, r"^/complaints/.+/submitted/$")
         self.assertEqual(Complaint.objects.count(), 1)
 
         complaint = Complaint.objects.get()

@@ -31,12 +31,12 @@ class ComplaintForm(forms.ModelForm):
         error_messages={
             "required": "Please enter a description of your complaint.",
         },
-        widget=forms.Textarea(attrs={"rows": 5}),
+        widget=forms.Textarea(attrs={"rows": 6}),
     )
 
     class Meta:
         model = Complaint
-        fields = ["category", "title", "description"]
+        fields = ("category", "title", "description")
 
     def clean_title(self):
         title = self.cleaned_data["title"].strip()
