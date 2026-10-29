@@ -251,6 +251,7 @@ def run_load_test(
     concurrency,
     threshold_seconds,
     report_path,
+    report_metadata=None,
 ):
     if concurrency < MIN_CONCURRENCY:
         raise ValueError(f"Concurrency must be at least {MIN_CONCURRENCY}.")
@@ -364,6 +365,8 @@ def run_load_test(
         ],
         "passed": passed,
     }
+    if report_metadata is not None:
+        report["environment"] = report_metadata
     _write_report(report, report_path)
     return report
 

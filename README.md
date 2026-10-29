@@ -178,6 +178,16 @@ The test synchronizes 100 authenticated clients before measurement, then issues 
 python manage.py seed_load_test_users --confirm-local --cleanup
 ```
 
+To run the automated 100-user integration load test and save its result under `loadtests/results/`:
+
+```powershell
+$env:NFR02_REPORT_PATH = "loadtests\results\nfr02-100-users.json"
+python manage.py test accounts.tests.test_authenticated_concurrency
+Remove-Item Env:\NFR02_REPORT_PATH
+```
+
+This test uses Django's threaded live test server and isolated test database, creates 100 temporary authenticated users, and sends 100 concurrent requests. It writes matching JSON and CSV reports with environment, latency, throughput, and failure counts; neither contains credentials. It verifies the automated integration scenario, not the separate three-minute Waitress load run above.
+
 Run against representative local data and hardware; a development test does not guarantee production capacity.
 
 ## Error recovery (NFR-04)
