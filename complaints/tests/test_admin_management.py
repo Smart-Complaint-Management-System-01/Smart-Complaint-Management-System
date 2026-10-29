@@ -127,7 +127,7 @@ class StatusTransitionTests(TestCase):
         change_status(c, Complaint.Status.REJECTED, actor=self.admin)
         entry = ComplaintHistory.objects.get(complaint=c, new_status=Complaint.Status.REJECTED)
         self.assertEqual(entry.previous_status, Complaint.Status.SUBMITTED)
-        self.assertEqual(entry.changed_by, self.admin)
+        self.assertEqual(entry.updated_by, self.admin)
 
     def test_closed_from_rejected_records_history(self):
         c = self.make_complaint(Complaint.Status.REJECTED)

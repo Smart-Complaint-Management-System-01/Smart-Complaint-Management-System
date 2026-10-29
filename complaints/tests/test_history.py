@@ -28,21 +28,41 @@ class ComplaintHistoryModelTests(TestCase):
         entry = ComplaintHistory.objects.filter(complaint=self.complaint).last()
         self.assertIsNone(entry.previous_status)
         self.assertEqual(entry.new_status, Complaint.Status.SUBMITTED)
-        self.assertEqual(entry.changed_by, self.user)
+        self.assertEqual(entry.updated_by, self.user)
+
+    def test_record_initial_status_stores_default_details(self):
+        record_initial_status(self.complaint, actor=self.user)
+        entry = ComplaintHistory.objects.filter(complaint=self.complaint).last()
+        self.assertEqual(entry.update_details, "Complaint submitted")
+
+    def test_record_initial_status_accepts_custom_details(self):
+        record_initial_status(self.complaint, actor=self.user, details="Lodged via web form")
+        entry = ComplaintHistory.objects.filter(complaint=self.complaint).last()
+        self.assertEqual(entry.update_details, "Lodged via web form")
 
     def test_change_status_records_history(self):
         record_initial_status(self.complaint, actor=self.user)
         change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=self.admin)
-        entries = list(ComplaintHistory.objects.filter(complaint=self.complaint).order_by("changed_at"))
+        entries = list(ComplaintHistory.objects.filter(complaint=self.complaint).order_by("updated_at"))
         self.assertEqual(len(entries), 2)
         self.assertEqual(entries[1].previous_status, Complaint.Status.SUBMITTED)
         self.assertEqual(entries[1].new_status, Complaint.Status.UNDER_REVIEW)
-        self.assertEqual(entries[1].changed_by, self.admin)
+        self.assertEqual(entries[1].updated_by, self.admin)
+
+    def test_change_status_stores_details(self):
+        change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=self.admin, details="Looking into it")
+        entry = ComplaintHistory.objects.filter(complaint=self.complaint).last()
+        self.assertEqual(entry.update_details, "Looking into it")
+
+    def test_change_status_empty_details_by_default(self):
+        change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=self.admin)
+        entry = ComplaintHistory.objects.filter(complaint=self.complaint).last()
+        self.assertEqual(entry.update_details, "")
 
     def test_history_entry_has_timestamp(self):
         record_initial_status(self.complaint, actor=self.user)
         entry = ComplaintHistory.objects.filter(complaint=self.complaint).last()
-        self.assertIsNotNone(entry.changed_at)
+        self.assertIsNotNone(entry.updated_at)
 
     def test_invalid_transition_does_not_create_history(self):
         before = ComplaintHistory.objects.filter(complaint=self.complaint).count()
@@ -69,6 +89,12 @@ class ComplaintHistoryModelTests(TestCase):
                 change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=self.admin)
         self.complaint.refresh_from_db()
         self.assertEqual(self.complaint.status, original_status)
+
+    def test_update_details_persists_to_database(self):
+        change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=self.admin, details="Checked on site")
+        entry = ComplaintHistory.objects.filter(complaint=self.complaint).last()
+        entry.refresh_from_db()
+        self.assertEqual(entry.update_details, "Checked on site")
 
 
 class ComplaintHistoryViewTests(TestCase):
@@ -126,6 +152,31 @@ class ComplaintHistoryViewTests(TestCase):
         self.assertContains(response, "Under Review")
         self.assertContains(response, "Submitted")
 
+    def test_history_shows_four_column_headers(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.history_url)
+        self.assertContains(response, "Date")
+        self.assertContains(response, "Change")
+        self.assertContains(response, "By")
+        self.assertContains(response, "Details")
+
+    def test_history_shows_update_details(self):
+        change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=self.admin, details="Reviewing now")
+        self.client.force_login(self.user)
+        response = self.client.get(self.history_url)
+        self.assertContains(response, "Reviewing now")
+
+    def test_history_shows_system_fallback_when_no_actor(self):
+        change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=None)
+        self.client.force_login(self.user)
+        response = self.client.get(self.history_url)
+        self.assertContains(response, "System")
+
+    def test_history_shows_initial_submission_details(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.history_url)
+        self.assertContains(response, "Complaint submitted")
+
     # --- Admin history view ---
 
     def test_admin_can_view_complaint_history(self):
@@ -140,11 +191,31 @@ class ComplaintHistoryViewTests(TestCase):
         response = self.client.get(self.admin_history_url)
         self.assertEqual(response.status_code, 403)
 
-    def test_admin_history_shows_changed_by_email(self):
+    def test_admin_history_shows_updated_by_email(self):
         change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=self.admin)
         self.client.force_login(self.admin)
         response = self.client.get(self.admin_history_url)
         self.assertContains(response, self.admin.email)
+
+    def test_admin_history_shows_four_column_headers(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(self.admin_history_url)
+        self.assertContains(response, "Date")
+        self.assertContains(response, "Change")
+        self.assertContains(response, "By")
+        self.assertContains(response, "Details")
+
+    def test_admin_history_shows_update_details(self):
+        change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=self.admin, details="Admin note")
+        self.client.force_login(self.admin)
+        response = self.client.get(self.admin_history_url)
+        self.assertContains(response, "Admin note")
+
+    def test_admin_history_shows_system_fallback_when_no_actor(self):
+        change_status(self.complaint, Complaint.Status.UNDER_REVIEW, actor=None)
+        self.client.force_login(self.admin)
+        response = self.client.get(self.admin_history_url)
+        self.assertContains(response, "System")
 
 
 class ComplaintSubmissionCreatesHistoryTests(TestCase):
@@ -166,3 +237,12 @@ class ComplaintSubmissionCreatesHistoryTests(TestCase):
         self.assertEqual(entries.count(), 1)
         self.assertEqual(entries.first().new_status, Complaint.Status.SUBMITTED)
         self.assertIsNone(entries.first().previous_status)
+
+    def test_submission_via_view_stores_submitted_details(self):
+        self.client.post(
+            reverse("complaints:new"),
+            {"category": "OTHER", "title": "My issue", "description": "Details here."},
+        )
+        complaint = Complaint.objects.get(user=self.user)
+        entry = ComplaintHistory.objects.get(complaint=complaint)
+        self.assertEqual(entry.update_details, "Complaint submitted")

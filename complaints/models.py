@@ -59,17 +59,19 @@ class ComplaintHistory(models.Model):
         max_length=20, choices=Complaint.Status.choices, null=True, blank=True
     )
     new_status = models.CharField(max_length=20, choices=Complaint.Status.choices)
-    changed_at = models.DateTimeField(auto_now_add=True)
-    changed_by = models.ForeignKey(
+    updated_at = models.DateTimeField(auto_now_add=True)
+    updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="complaint_history_entries",
     )
+    update_details = models.TextField(blank=True)
 
     class Meta:
-        ordering = ["changed_at"]
+        ordering = ["updated_at"]
+        verbose_name_plural = "complaint history"
 
     def __str__(self):
         prev = self.previous_status or "—"

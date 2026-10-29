@@ -76,7 +76,7 @@ def complaint_history(request, complaint_id):
         request.user.complaints,
         complaint_id=complaint_id,
     )
-    entries = complaint.history.select_related("changed_by").all()
+    entries = complaint.history.select_related("updated_by").all()
     return render(
         request,
         "complaints/history.html",
@@ -91,7 +91,7 @@ def admin_complaint_history(request, pk):
         Complaint.objects.select_related("user"),
         pk=pk,
     )
-    entries = complaint.history.select_related("changed_by").all()
+    entries = complaint.history.select_related("updated_by").all()
     return render(
         request,
         "complaints/admin_history.html",
