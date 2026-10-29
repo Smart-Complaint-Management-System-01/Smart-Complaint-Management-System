@@ -1,6 +1,6 @@
 # Smart Complaint Management System
 
-A web application where users lodge complaints and track their resolution, and administrators review and manage them.
+A web application where users lodge complaints and track their resolution, and administrators review, assign, update and resolve them.
 
 **Stack:** Python, Django (MVT), MySQL, Django ORM, HTML5/CSS/JavaScript, Git/GitHub
 
@@ -83,7 +83,17 @@ DB_PORT=3306
 python manage.py migrate
 ```
 
-### 7. Create an administrator account
+This includes the Sprint 2 migration `0002_sprint2_models` (departments, complaint history, notifications, assignment and resolution fields).
+
+### 7. Load the default departments
+
+```bash
+python manage.py seed_departments
+```
+
+Safe to run more than once. Departments are needed for complaint assignment (FR-09).
+
+### 8. Create an administrator account
 
 ```bash
 python manage.py createsuperuser
@@ -91,7 +101,7 @@ python manage.py createsuperuser
 
 Superusers automatically get the `ADMIN` role. You can log in with the **email** you enter here.
 
-### 8. Run the server
+### 9. Run the server
 
 ```bash
 python manage.py runserver
@@ -103,7 +113,10 @@ python manage.py runserver
 | http://127.0.0.1:8000/register/ | User registration |
 | http://127.0.0.1:8000/login/ | Login |
 | http://127.0.0.1:8000/complaints/ | My complaints (users) |
-| http://127.0.0.1:8000/admin/complaints/ | Complaint management (administrators) |
+| http://127.0.0.1:8000/complaints/\<complaint_id\>/ | Complaint details and status history (owner only) |
+| http://127.0.0.1:8000/notifications/ | Status-change notifications (users) |
+| http://127.0.0.1:8000/admin/complaints/ | Complaint management, search and filtering (administrators) |
+| http://127.0.0.1:8000/admin/complaints/\<id\>/ | Admin complaint detail: assign, update, change status, resolve |
 | http://127.0.0.1:8000/django-admin/ | Django's built-in admin site |
 
 ## Running tests
@@ -128,40 +141,79 @@ GRANT ALL PRIVILEGES ON *.* TO 'your_user'@'localhost';
 ```
 4. Start the server again. The complaint is still listed under **My Complaints**.
 
+## Password security (NFR-09)
+
+- Passwords are never stored in plaintext. Django stores only a salted, one-way **PBKDF2-SHA256** hash (`pbkdf2_sha256$...`) in the `password` column.
+- Every user gets a different random salt, so two users with the same password have different hashes.
+- Passwords must be at least 8 characters and pass Django's common-password, numeric-only and similarity validators.
+- Passwords are never echoed back in responses or written to logs.
+- Configured in `config/settings.py` (`PASSWORD_HASHERS`, `AUTH_PASSWORD_VALIDATORS`) and verified by `accounts/tests/test_password_security.py`.
+
+## Performance and concurrency (NFR-01, NFR-02)
+
+- Every response carries an `X-Response-Time` header. Requests slower than 3 seconds are logged to the `performance` logger.
+- Search and filter columns are indexed, list pages are paginated, and the database uses persistent connections (`CONN_MAX_AGE`).
+- To simulate 100 concurrent logged-in users:
+
+```bash
+pip install -r requirements-dev.txt
+python manage.py seed_load_test_data --users 100
+DJANGO_DEBUG=False waitress-serve --threads=16 --listen=127.0.0.1:8000 config.wsgi:application
+# in a second terminal
+python performance/load_test.py
+```
+
+  On Windows PowerShell, run `$env:DJANGO_DEBUG="False"` first. Use a local database only, since the command creates 100 test accounts.
+
+## Error recovery (NFR-04)
+
+- Complaint creation runs in a single database transaction. If saving fails, nothing is stored and the user sees a clear message with their input kept.
+- A one-time token on the lodge form prevents duplicates from double clicks, refreshes or back-button resubmits.
+- Friendly 404 and 500 pages are provided.
+
 ## Project structure
 
 ```
-config/          Project settings, root URLs, placeholder view
+config/          Project settings, root URLs, response-time middleware
 accounts/        Custom User model (roles), registration, login, role decorators
-complaints/      Complaint model, lodge/view views, admin management, status workflow
-templates/       base.html, home.html, partials/, accounts/, complaints/
+complaints/      Complaint, Department, ComplaintHistory and Notification models;
+                 services (status workflow, assignment, updates, resolution);
+                 search/filter module; notifications; management commands
+templates/       base.html, home.html, 403/404/500, partials/, accounts/, complaints/
+                 (complaints/partials/ holds the admin detail sections)
 static/          css/styles.css, js/main.js
+performance/     load_test.py for the concurrent-user test
 ```
 
 ## Roles
 
 | Role | Can do |
 |---|---|
-| `USER` (default on registration) | Register, log in, lodge complaints, view own complaints and their status |
-| `ADMIN` | View all complaints, open details, move a complaint along the status workflow |
+| `USER` (default on registration) | Register, log in, lodge complaints, view own complaints with status history, add information to an open complaint, read notifications |
+| `ADMIN` | View all complaints, search and filter them, assign to an administrator or department, add updates, move a complaint along the status workflow, record the resolution |
 
 Complaint status workflow: **Submitted → Under Review → Assigned → In Progress → Resolved**, one step at a time.
+
+- **Assigned** is set by assigning the complaint (from Under Review). Reassignment later keeps the current status and is logged.
+- **Resolved** can only be set by recording resolution details. The generic "Move to" button never resolves a complaint.
+- Every status change, assignment, update and resolution writes a history entry (who, what, when).
+- The complaint owner gets an in-app notification on every status change. Email is out of scope.
 
 To promote an existing user to administrator, open `/django-admin/`, edit the user, and set **Role** to `Administrator`.
 
 ## Team workflow
 
-**Branches:** one branch per issue, named `feature/<ID>-<short-name>`, for example `feature/FR-01-user-registration`.
+**Branches:** one branch per issue, named `feature/<ID>-<short-name>`, for example `feature/FR-06-complaint-history`.
 
 **Commit messages:** `type(scope): summary (ID)`, plus a `Refs #<issue>` line in the body.
 
 ```
-feat(accounts): add RegistrationForm with validation (FR-01)
+feat(complaints): add Department, ComplaintHistory and Notification models (FR-06)
 
-Refs #1
+Refs #7
 ```
 
-Types: `feat`, `fix`, `test`, `docs`, `style`, `chore`.
+Types: `feat`, `fix`, `test`, `docs`, `style`, `chore`, `refactor`.
 
 **Before every push:**
 
@@ -177,10 +229,15 @@ git push -u origin <your-branch>
 
 - Only the person who changes `models.py` fields creates migrations. Tell the team first, and commit the migration file with the model change.
 - After pulling someone's model change, run `python manage.py migrate`.
-- If `urls.py` conflicts, keep both sides' lines.
+- If `urls.py`, `views.py` or `services.py` conflicts, keep both sides' lines.
+- The admin complaint page is split into partials under `templates/complaints/partials/`. Edit only the partial for your feature.
 - With `LoginRequiredMiddleware` enabled (NFR-07), every new page requires login by default. Mark public pages with `@login_not_required`.
 - Never commit `.env`, `venv/`, or `db.sqlite3`.
 
 ## Sprint 1 scope
 
 FR-01 User Registration · FR-02 User Authentication · FR-03 Role-Based Access · FR-04 Lodge Complaint · FR-05 View Complaint Status · FR-08 Admin Complaint Management · NFR-03 Data Persistence · NFR-05 Usability · NFR-06 Validation Feedback · NFR-07 Authentication Security · NFR-08 Authorization · NFR-10 Session Security
+
+## Sprint 2 scope
+
+FR-06 Complaint History · FR-07 Complaint Update · FR-09 Complaint Assignment · FR-10 Complaint Resolution · FR-11 Complaint Search and Filtering · FR-12 Complaint Notifications · NFR-01 Response Time · NFR-02 Concurrent Users · NFR-04 Error Recovery · NFR-09 Password Protection
