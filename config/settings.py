@@ -112,8 +112,16 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
+    },
 ]
 
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",      # salted, one-way (default)
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",  # verify-only for old hashes
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
