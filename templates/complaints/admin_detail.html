@@ -18,7 +18,11 @@
     </form>
     {% endfor %}
   {% else %}
+  {% if complaint.status == "CLOSED" %}
   <p class="muted">This complaint is closed. No further status changes are available.</p>
+  {% else %}
+  <p class="muted">No status transitions are currently available.</p>
+  {% endif %}
   {% endif %}
   <p><a href="{% url 'complaints:admin_complaint_history' complaint.pk %}">View History</a></p>
   <p><a href="{% url 'complaints:admin_list' %}">&laquo; Back to all complaints</a></p>
