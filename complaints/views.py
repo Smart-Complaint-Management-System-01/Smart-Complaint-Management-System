@@ -10,8 +10,8 @@ from accounts.decorators import admin_required, role_required
 from accounts.models import User
 
 from .forms import ComplaintForm
-from .models import Complaint
-from .services import NEXT_STATUS, InvalidTransition, change_status
+from .models import Complaint, ComplaintHistory
+from .services import NEXT_STATUS, InvalidTransition, change_status, record_initial_status
 
 
 # FR-04 and NFR-06: Complaint submission and validation feedback
@@ -25,6 +25,7 @@ def new_complaint(request):
                 complaint = form.save(commit=False)
                 complaint.user = request.user
                 complaint.save()
+                record_initial_status(complaint, actor=request.user)
 
             messages.success(
                 request,
@@ -68,7 +69,35 @@ def my_complaints(request):
     )
 
 
-# FR-08: Admin complaint management
+# FR-06: User complaint history
+@role_required(User.Role.USER)
+def complaint_history(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+    entries = complaint.history.select_related("changed_by").all()
+    return render(
+        request,
+        "complaints/history.html",
+        {"complaint": complaint, "entries": entries},
+    )
+
+
+# FR-06: Admin complaint history
+@admin_required
+def admin_complaint_history(request, pk):
+    complaint = get_object_or_404(
+        Complaint.objects.select_related("user"),
+        pk=pk,
+    )
+    entries = complaint.history.select_related("changed_by").all()
+    return render(
+        request,
+        "complaints/admin_history.html",
+        {"complaint": complaint, "entries": entries},
+    )
+
 @admin_required
 def admin_list(request):
     queryset = Complaint.objects.select_related("user")
@@ -98,7 +127,7 @@ def admin_update_status(request, pk):
     complaint = get_object_or_404(Complaint, pk=pk)
 
     try:
-        change_status(complaint, request.POST.get("status"))
+        change_status(complaint, request.POST.get("status"), actor=request.user)
     except InvalidTransition as exc:
         messages.error(request, str(exc))
     else:

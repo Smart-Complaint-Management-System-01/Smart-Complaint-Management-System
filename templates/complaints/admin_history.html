@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}History – {{ complaint.complaint_id }}{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1>History for {{ complaint.complaint_id }}</h1>
+  <p><strong>Submitted by:</strong> {{ complaint.user.get_full_name|default:complaint.user.email }} ({{ complaint.user.email }})</p>
+  <p><strong>Title:</strong> {{ complaint.title }}</p>
+  <p><strong>Current status:</strong> <span class="badge badge-{{ complaint.status|lower }}">{{ complaint.get_status_display }}</span></p>
+  <p><strong>Submitted:</strong> {{ complaint.created_at|date:"d M Y, H:i" }}</p>
+
+  {% if entries %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date &amp; Time</th>
+          <th>Previous Status</th>
+          <th>New Status</th>
+          <th>Changed By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+          <tr>
+            <td>{{ entry.changed_at|date:"d M Y, H:i" }}</td>
+            <td>{{ entry.get_previous_status_display|default:"—" }}</td>
+            <td>{{ entry.get_new_status_display }}</td>
+            <td>{{ entry.changed_by.email|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No history recorded yet.</p>
+  {% endif %}
+
+  <p><a href="{% url 'complaints:admin_detail' complaint.pk %}">&laquo; Back to complaint</a></p>
+</section>
+{% endblock %}

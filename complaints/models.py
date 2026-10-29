@@ -47,3 +47,28 @@ class Complaint(models.Model):
             if not self.complaint_id:
                 self.complaint_id = f"CMP-{self.pk:06d}"
                 super().save(update_fields=["complaint_id"])
+
+
+class ComplaintHistory(models.Model):
+    complaint = models.ForeignKey(
+        Complaint, on_delete=models.CASCADE, related_name="history"
+    )
+    previous_status = models.CharField(
+        max_length=20, choices=Complaint.Status.choices, null=True, blank=True
+    )
+    new_status = models.CharField(max_length=20, choices=Complaint.Status.choices)
+    changed_at = models.DateTimeField(auto_now_add=True)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="complaint_history_entries",
+    )
+
+    class Meta:
+        ordering = ["changed_at"]
+
+    def __str__(self):
+        prev = self.previous_status or "—"
+        return f"{self.complaint.complaint_id}: {prev} → {self.new_status}"

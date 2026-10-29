@@ -25,4 +25,16 @@ urlpatterns = [
         views.admin_update_status,
         name="admin_update_status",
     ),
+
+    # FR-06
+    path(
+        "complaints/<str:complaint_id>/history/",
+        views.complaint_history,
+        name="complaint_history",
+    ),
+    path(
+        "admin/complaints/<int:pk>/history/",
+        views.admin_complaint_history,
+        name="admin_complaint_history",
+    ),
 ]

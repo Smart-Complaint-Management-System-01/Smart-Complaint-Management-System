@@ -43,6 +43,10 @@
             <strong>Last updated:</strong>
             {{ complaint.updated_at|date:"d M Y, H:i" }}
           </p>
+
+          <p>
+            <a href="{% url 'complaints:complaint_history' complaint.complaint_id %}">View History</a>
+          </p>
         </article>
       {% endfor %}
     </div>
