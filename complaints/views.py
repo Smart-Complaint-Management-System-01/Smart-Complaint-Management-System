@@ -116,7 +116,7 @@ def admin_detail(request, pk):
         "complaints/admin_detail.html",
         {
             "complaint": complaint,
-            "next_status": NEXT_STATUS.get(complaint.status),
+            "next_statuses": sorted(NEXT_STATUS.get(complaint.status, set())),
         },
     )
 

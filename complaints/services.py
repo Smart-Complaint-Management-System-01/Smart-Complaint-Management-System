@@ -4,12 +4,14 @@ from .models import Complaint, ComplaintHistory
 
 S = Complaint.Status
 
-# Allowed workflow (SAD 4.1): one step forward at a time
+# Allowed workflow (Sprint 2): branching transitions, values are sets
 NEXT_STATUS = {
-    S.SUBMITTED: S.UNDER_REVIEW,
-    S.UNDER_REVIEW: S.ASSIGNED,
-    S.ASSIGNED: S.IN_PROGRESS,
-    S.IN_PROGRESS: S.RESOLVED,
+    S.SUBMITTED:    {S.UNDER_REVIEW, S.REJECTED},
+    S.UNDER_REVIEW: {S.ASSIGNED,     S.REJECTED},
+    S.ASSIGNED:     {S.IN_PROGRESS},
+    S.IN_PROGRESS:  {S.RESOLVED},
+    S.RESOLVED:     {S.CLOSED},
+    S.REJECTED:     {S.CLOSED},
 }
 
 
@@ -28,7 +30,7 @@ def record_initial_status(complaint, actor=None):
 
 
 def change_status(complaint, new_status, actor=None):
-    if NEXT_STATUS.get(complaint.status) != new_status:
+    if new_status not in NEXT_STATUS.get(complaint.status, set()):
         raise InvalidTransition(
             f"Cannot move a complaint from '{complaint.get_status_display()}' to '{new_status}'."
         )

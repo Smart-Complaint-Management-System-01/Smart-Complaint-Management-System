@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from complaints.models import Complaint
+from complaints.models import Complaint, ComplaintHistory
 from complaints.services import InvalidTransition, change_status
 
 User = get_user_model()
@@ -45,3 +45,114 @@ class AdminManagementTests(TestCase):
         self.client.force_login(self.admin)
         response = self.client.get(reverse("complaints:admin_update_status", args=[self.complaint.pk]))
         self.assertEqual(response.status_code, 405)
+
+
+class StatusTransitionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username="tu@x.com", email="tu@x.com", password="Pass12345!"
+        )
+        cls.admin = User.objects.create_user(
+            username="ta@x.com", email="ta@x.com", password="Pass12345!",
+            role=User.Role.ADMIN,
+        )
+
+    def make_complaint(self, status=Complaint.Status.SUBMITTED):
+        return Complaint.objects.create(
+            user=self.user, category="OTHER", title="T", description="D" * 20,
+            status=status,
+        )
+
+    # --- valid transitions ---
+    def test_submitted_to_under_review(self):
+        c = self.make_complaint(Complaint.Status.SUBMITTED)
+        change_status(c, Complaint.Status.UNDER_REVIEW, actor=self.admin)
+        c.refresh_from_db()
+        self.assertEqual(c.status, Complaint.Status.UNDER_REVIEW)
+
+    def test_submitted_to_rejected(self):
+        c = self.make_complaint(Complaint.Status.SUBMITTED)
+        change_status(c, Complaint.Status.REJECTED, actor=self.admin)
+        c.refresh_from_db()
+        self.assertEqual(c.status, Complaint.Status.REJECTED)
+
+    def test_under_review_to_assigned(self):
+        c = self.make_complaint(Complaint.Status.UNDER_REVIEW)
+        change_status(c, Complaint.Status.ASSIGNED, actor=self.admin)
+        c.refresh_from_db()
+        self.assertEqual(c.status, Complaint.Status.ASSIGNED)
+
+    def test_under_review_to_rejected(self):
+        c = self.make_complaint(Complaint.Status.UNDER_REVIEW)
+        change_status(c, Complaint.Status.REJECTED, actor=self.admin)
+        c.refresh_from_db()
+        self.assertEqual(c.status, Complaint.Status.REJECTED)
+
+    def test_resolved_to_closed(self):
+        c = self.make_complaint(Complaint.Status.RESOLVED)
+        change_status(c, Complaint.Status.CLOSED, actor=self.admin)
+        c.refresh_from_db()
+        self.assertEqual(c.status, Complaint.Status.CLOSED)
+
+    def test_rejected_to_closed(self):
+        c = self.make_complaint(Complaint.Status.REJECTED)
+        change_status(c, Complaint.Status.CLOSED, actor=self.admin)
+        c.refresh_from_db()
+        self.assertEqual(c.status, Complaint.Status.CLOSED)
+
+    # --- invalid transitions ---
+    def test_closed_has_no_further_transitions(self):
+        c = self.make_complaint(Complaint.Status.CLOSED)
+        with self.assertRaises(InvalidTransition):
+            change_status(c, Complaint.Status.RESOLVED, actor=self.admin)
+        c.refresh_from_db()
+        self.assertEqual(c.status, Complaint.Status.CLOSED)
+
+    def test_rejected_cannot_reopen(self):
+        c = self.make_complaint(Complaint.Status.REJECTED)
+        with self.assertRaises(InvalidTransition):
+            change_status(c, Complaint.Status.SUBMITTED, actor=self.admin)
+        c.refresh_from_db()
+        self.assertEqual(c.status, Complaint.Status.REJECTED)
+
+    def test_skipping_submitted_to_resolved_is_invalid(self):
+        c = self.make_complaint(Complaint.Status.SUBMITTED)
+        with self.assertRaises(InvalidTransition):
+            change_status(c, Complaint.Status.RESOLVED, actor=self.admin)
+
+    # --- history recording for new transitions ---
+    def test_rejection_records_history(self):
+        c = self.make_complaint(Complaint.Status.SUBMITTED)
+        change_status(c, Complaint.Status.REJECTED, actor=self.admin)
+        entry = ComplaintHistory.objects.get(complaint=c, new_status=Complaint.Status.REJECTED)
+        self.assertEqual(entry.previous_status, Complaint.Status.SUBMITTED)
+        self.assertEqual(entry.changed_by, self.admin)
+
+    def test_closed_from_rejected_records_history(self):
+        c = self.make_complaint(Complaint.Status.REJECTED)
+        change_status(c, Complaint.Status.CLOSED, actor=self.admin)
+        entry = ComplaintHistory.objects.get(complaint=c, new_status=Complaint.Status.CLOSED)
+        self.assertEqual(entry.previous_status, Complaint.Status.REJECTED)
+
+    # --- admin detail template renders correct action buttons ---
+    def test_admin_detail_shows_both_actions_for_submitted(self):
+        c = self.make_complaint(Complaint.Status.SUBMITTED)
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("complaints:admin_detail", args=[c.pk]))
+        self.assertContains(response, "Under Review")
+        self.assertContains(response, "Rejected")
+
+    def test_admin_detail_shows_both_actions_for_under_review(self):
+        c = self.make_complaint(Complaint.Status.UNDER_REVIEW)
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("complaints:admin_detail", args=[c.pk]))
+        self.assertContains(response, "Assigned")
+        self.assertContains(response, "Rejected")
+
+    def test_admin_detail_shows_no_actions_for_closed(self):
+        c = self.make_complaint(Complaint.Status.CLOSED)
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("complaints:admin_detail", args=[c.pk]))
+        self.assertContains(response, "No further status changes are available.")
+        self.assertNotContains(response, "Move to")

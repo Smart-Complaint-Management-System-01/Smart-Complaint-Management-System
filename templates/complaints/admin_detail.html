@@ -9,14 +9,16 @@
   <p><strong>Status:</strong> <span class="badge badge-{{ complaint.status|lower }}">{{ complaint.get_status_display }}</span></p>
   <h2>Description</h2>
   <p>{{ complaint.description|linebreaksbr }}</p>
-  {% if next_status %}
-  <form method="post" action="{% url 'complaints:admin_update_status' complaint.pk %}">
-    {% csrf_token %}
-    <input type="hidden" name="status" value="{{ next_status.value }}">
-    <button type="submit" class="btn btn-primary">Move to "{{ next_status.label }}"</button>
-  </form>
+  {% if next_statuses %}
+    {% for ns in next_statuses %}
+    <form method="post" action="{% url 'complaints:admin_update_status' complaint.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="status" value="{{ ns.value }}">
+      <button type="submit" class="btn btn-primary">Move to "{{ ns.label }}"</button>
+    </form>
+    {% endfor %}
   {% else %}
-  <p class="muted">This complaint is resolved. No further status changes are available.</p>
+  <p class="muted">This complaint is closed. No further status changes are available.</p>
   {% endif %}
   <p><a href="{% url 'complaints:admin_complaint_history' complaint.pk %}">View History</a></p>
   <p><a href="{% url 'complaints:admin_list' %}">&laquo; Back to all complaints</a></p>

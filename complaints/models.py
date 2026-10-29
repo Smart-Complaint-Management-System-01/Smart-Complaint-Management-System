@@ -9,6 +9,8 @@ class Complaint(models.Model):
         ASSIGNED = "ASSIGNED", "Assigned"
         IN_PROGRESS = "IN_PROGRESS", "In Progress"
         RESOLVED = "RESOLVED", "Resolved"
+        REJECTED = "REJECTED", "Rejected"
+        CLOSED = "CLOSED", "Closed"
 
     class Category(models.TextChoices):  # final list still open in SAD 4.6
         ACADEMIC = "ACADEMIC", "Academic"
