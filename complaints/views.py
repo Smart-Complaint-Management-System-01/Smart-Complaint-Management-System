@@ -1,7 +1,10 @@
 
+import logging
+import uuid
+
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db import transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -13,19 +16,64 @@ from .forms import ComplaintForm
 from .models import Complaint
 from .services import NEXT_STATUS, InvalidTransition, change_status
 
+logger = logging.getLogger(__name__)
 
-# FR-04 and NFR-06: Complaint submission and validation feedback
+
+def _issue_form_token(request):
+    request.session["complaint_form_token"] = uuid.uuid4().hex
+
+
+# FR-04, NFR-04 and NFR-06: Complaint submission, recovery and validation feedback
 @role_required(User.Role.USER)
 def new_complaint(request):
     if request.method == "POST":
+        token = request.POST.get("form_token")
+        if not token or token != request.session.get("complaint_form_token"):
+            messages.warning(request, "This complaint was already submitted.")
+            return redirect("complaints:my_list")
+
         form = ComplaintForm(request.POST)
 
         if form.is_valid():
-            with transaction.atomic():
-                complaint = form.save(commit=False)
-                complaint.user = request.user
-                complaint.save()
+            try:
+                with transaction.atomic():
+                    complaint = form.save(commit=False)
+                    complaint.user = request.user
+                    complaint.submission_token = token
+                    complaint.save()
+            except IntegrityError:
+                complaint = Complaint.objects.filter(
+                    user=request.user,
+                    submission_token=token,
+                ).first()
+                if complaint is None:
+                    logger.exception("Complaint submission failed")
+                    messages.error(
+                        request,
+                        "We couldn't save your complaint. Please try again.",
+                    )
+                    return render(
+                        request, "complaints/new.html", {"form": form}, status=500
+                    )
 
+                request.session.pop("complaint_form_token", None)
+                return redirect(
+                    reverse(
+                        "complaints:submission_confirmation",
+                        args=[complaint.complaint_id],
+                    )
+                )
+            except DatabaseError:
+                logger.exception("Complaint submission failed")
+                messages.error(
+                    request,
+                    "We couldn't save your complaint. Please try again.",
+                )
+                return render(
+                    request, "complaints/new.html", {"form": form}, status=500
+                )
+
+            request.session.pop("complaint_form_token", None)
             messages.success(
                 request,
                 "Your complaint was submitted successfully.",
@@ -39,6 +87,7 @@ def new_complaint(request):
             )
     else:
         form = ComplaintForm()
+        _issue_form_token(request)
 
     return render(request, "complaints/new.html", {"form": form})
 
@@ -50,6 +99,7 @@ def submission_confirmation(request, complaint_id):
         request.user.complaints,
         complaint_id=complaint_id,
     )
+    _issue_form_token(request)
     return render(
         request,
         "complaints/new.html",
