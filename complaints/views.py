@@ -57,14 +57,15 @@ def submission_confirmation(request, complaint_id):
     )
 
 
-# FR-05: View my complaints
+# FR-05 and NFR-01: View my complaints (paginated)
 @role_required(User.Role.USER)
 def my_complaints(request):
-    complaints = Complaint.objects.filter(user=request.user)
+    queryset = Complaint.objects.filter(user=request.user).order_by("-created_at")
+    page = Paginator(queryset, 10).get_page(request.GET.get("page"))
     return render(
         request,
         "complaints/my_complaints.html",
-        {"complaints": complaints},
+        {"complaints": page, "page": page},
     )
 
 
