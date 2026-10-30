@@ -12,8 +12,9 @@ from accounts.decorators import admin_required, role_required
 from accounts.models import User
 
 from .forms import ComplaintForm
-from .models import Complaint, ComplaintHistory, Department
-from .services import NEXT_STATUS, InvalidTransition, change_status, record_history, record_initial_status, resolve_complaint
+from .models import Complaint
+from .services import NEXT_STATUS, InvalidTransition, change_status, record_history
+from .search import ComplaintFilterForm, filter_complaints
 
 logger = logging.getLogger(__name__)
 
@@ -165,12 +166,19 @@ def admin_complaint_history(request, pk):
         {"complaint": complaint, "entries": entries},
     )
 
+# FR-08 / FR-11: admin list with search and filtering
 @admin_required
 def admin_list(request):
-    queryset = Complaint.objects.select_related("user")
+    form = ComplaintFilterForm(request.GET or None)
+    queryset = Complaint.objects.select_related("user", "assigned_to", "assigned_department")
+    if form.is_valid():
+        queryset = filter_complaints(queryset, form.cleaned_data)
     page = Paginator(queryset, 10).get_page(request.GET.get("page"))
-    return render(request, "complaints/admin_list.html", {"page": page})
-
+    params = request.GET.copy()
+    params.pop("page", None)
+    return render(request, "complaints/admin_list.html", {
+        "page": page, "form": form, "querystring": params.urlencode(),
+    })
 
 @admin_required
 def admin_detail(request, pk):
