@@ -288,15 +288,23 @@ class ComplaintSubmissionCreatesHistoryTests(TestCase):
             username="s@h.com", email="s@h.com", password=None
         )
         self.client.force_login(self.user)
+        self.url = reverse("complaints:new")
+
+    def _submit(self):
+        """Submit through the real view, including the NFR-04 one-time form token."""
+        self.client.get(self.url)  # the GET issues the token into the session
+        return self.client.post(
+            self.url,
+            {
+                "category": "OTHER",
+                "title": "My issue",
+                "description": "Details here.",
+                "form_token": self.client.session["complaint_form_token"],
+            },
+        )
 
     def test_submission_via_view_creates_initial_history(self):
-        self.client.get(reverse("complaints:new"))
-        token = self.client.session["complaint_form_token"]
-        self.client.post(
-            reverse("complaints:new"),
-            {"category": "OTHER", "title": "My issue", "description": "Details here.",
-             "form_token": token},
-        )
+        self._submit()
         complaint = Complaint.objects.get(user=self.user)
         entries = ComplaintHistory.objects.filter(complaint=complaint)
         self.assertEqual(entries.count(), 1)
@@ -304,13 +312,7 @@ class ComplaintSubmissionCreatesHistoryTests(TestCase):
         self.assertEqual(entries.first().previous_status, "")
 
     def test_submission_via_view_stores_submitted_details(self):
-        self.client.get(reverse("complaints:new"))
-        token = self.client.session["complaint_form_token"]
-        self.client.post(
-            reverse("complaints:new"),
-            {"category": "OTHER", "title": "My issue", "description": "Details here.",
-             "form_token": token},
-        )
+        self._submit()
         complaint = Complaint.objects.get(user=self.user)
         entry = ComplaintHistory.objects.get(complaint=complaint)
         self.assertEqual(entry.update_details, "Complaint submitted")
