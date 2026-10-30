@@ -24,6 +24,11 @@ class ComplaintSubmissionTests(TestCase):
         )
         self.url = reverse("complaints:new")
 
+    def post_submission(self, data):
+        self.client.get(self.url)
+        data["form_token"] = self.client.session["complaint_form_token"]
+        return self.client.post(self.url, data)
+
     def test_authenticated_user_can_open_form(self):
         self.client.force_login(self.user)
 
@@ -31,6 +36,7 @@ class ComplaintSubmissionTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Lodge a Complaint")
+        self.assertContains(response, 'name="form_token"')
         self.assertContains(response, 'name="category"')
         self.assertContains(response, 'name="title"')
         self.assertContains(response, 'name="description"')
@@ -38,8 +44,7 @@ class ComplaintSubmissionTests(TestCase):
     def test_valid_submission_redirects_to_owned_confirmation(self):
         self.client.force_login(self.user)
 
-        response = self.client.post(
-            self.url,
+        response = self.post_submission(
             {
                 "category": Complaint.Category.ACADEMIC,
                 "title": "Course materials",
@@ -102,8 +107,7 @@ class ComplaintSubmissionTests(TestCase):
     def test_invalid_or_incomplete_input_does_not_create_complaint(self):
         self.client.force_login(self.user)
 
-        response = self.client.post(
-            self.url,
+        response = self.post_submission(
             {"category": Complaint.Category.ACADEMIC, "title": "", "description": ""},
         )
 

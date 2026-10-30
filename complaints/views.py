@@ -1,7 +1,9 @@
+import logging
+import uuid
 
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db import transaction
+from django.db import DatabaseError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -13,23 +15,50 @@ from .forms import ComplaintForm
 from .models import Complaint, ComplaintHistory
 from .services import NEXT_STATUS, InvalidTransition, change_status, record_history, record_initial_status
 
+logger = logging.getLogger(__name__)
 
-# FR-04 and NFR-06: Complaint submission and validation feedback
+
+def _issue_form_token(request):
+    """NFR-04: one-time token that stops the same submission being saved twice."""
+    request.session["complaint_form_token"] = uuid.uuid4().hex
+
+
+# FR-04, NFR-04 and NFR-06: Complaint submission, error recovery and validation feedback
 @role_required(User.Role.USER)
 def new_complaint(request):
     if request.method == "POST":
+        token = request.POST.get("form_token")
+        if not token or token != request.session.get("complaint_form_token"):
+            messages.warning(request, "This complaint was already submitted.")
+            return redirect("complaints:my_list")
+
         form = ComplaintForm(request.POST)
 
         if form.is_valid():
-            with transaction.atomic():
-                complaint = form.save(commit=False)
-                complaint.user = request.user
-                complaint.save()
-                record_history(
-                    complaint, "", Complaint.Status.SUBMITTED,
-                    actor=request.user, details="Complaint submitted",
-                )
+try:
+    with transaction.atomic():
+        complaint = form.save(commit=False)
+        complaint.user = request.user
+        complaint.save()
+        record_history(
+            complaint,
+            "",
+            Complaint.Status.SUBMITTED,
+            actor=request.user,
+            details="Complaint submitted",
+        )
+except DatabaseError:
+    logger.exception("Complaint submission failed")
+    messages.error(
+        request,
+        "We couldn't save your complaint. Please try again.",
+    )
+    return render(
+        request, "complaints/new.html", {"form": form}, status=500
+    )
+  
 
+            request.session.pop("complaint_form_token", None)   # consumed only on success
             messages.success(
                 request,
                 "Your complaint was submitted successfully.",
@@ -43,6 +72,7 @@ def new_complaint(request):
             )
     else:
         form = ComplaintForm()
+        _issue_form_token(request)
 
     return render(request, "complaints/new.html", {"form": form})
 
@@ -54,6 +84,7 @@ def submission_confirmation(request, complaint_id):
         request.user.complaints,
         complaint_id=complaint_id,
     )
+    _issue_form_token(request)          # the form on this page must be submittable too
     return render(
         request,
         "complaints/new.html",
@@ -61,14 +92,15 @@ def submission_confirmation(request, complaint_id):
     )
 
 
-# FR-05: View my complaints
+# FR-05 and NFR-01: View my complaints (paginated)
 @role_required(User.Role.USER)
 def my_complaints(request):
-    complaints = Complaint.objects.filter(user=request.user)
+    queryset = Complaint.objects.filter(user=request.user).order_by("-created_at")
+    page = Paginator(queryset, 10).get_page(request.GET.get("page"))
     return render(
         request,
         "complaints/my_complaints.html",
-        {"complaints": complaints},
+        {"complaints": page, "page": page},
     )
 
 

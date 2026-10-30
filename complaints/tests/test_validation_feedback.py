@@ -20,6 +20,11 @@ class ComplaintValidationTests(TestCase):
         self.client.force_login(self.user)
         self.url = reverse("complaints:new")
 
+    def post_submission(self, data):
+        self.client.get(self.url)
+        data["form_token"] = self.client.session["complaint_form_token"]
+        return self.client.post(self.url, data)
+
     def test_form_page_loads(self):
         response = self.client.get(self.url)
 
@@ -27,7 +32,7 @@ class ComplaintValidationTests(TestCase):
         self.assertTemplateUsed(response, "complaints/new.html")
 
     def test_missing_fields_show_validation_errors(self):
-        response = self.client.post(self.url, {})
+        response = self.post_submission({})
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Please select a complaint category.")
@@ -36,8 +41,7 @@ class ComplaintValidationTests(TestCase):
         self.assertEqual(Complaint.objects.count(), 0)
 
     def test_invalid_category_is_rejected(self):
-        response = self.client.post(
-            self.url,
+        response = self.post_submission(
             {
                 "category": "INVALID_CATEGORY",
                 "title": "Test complaint",
@@ -50,8 +54,7 @@ class ComplaintValidationTests(TestCase):
         self.assertEqual(Complaint.objects.count(), 0)
 
     def test_whitespace_only_title_is_rejected(self):
-        response = self.client.post(
-            self.url,
+        response = self.post_submission(
             {
                 "category": Complaint.Category.ACADEMIC,
                 "title": "   ",
@@ -64,8 +67,7 @@ class ComplaintValidationTests(TestCase):
         self.assertEqual(Complaint.objects.count(), 0)
 
     def test_whitespace_only_description_is_rejected(self):
-        response = self.client.post(
-            self.url,
+        response = self.post_submission(
             {
                 "category": Complaint.Category.ACADEMIC,
                 "title": "Valid title",
@@ -81,8 +83,7 @@ class ComplaintValidationTests(TestCase):
         self.assertEqual(Complaint.objects.count(), 0)
 
     def test_valid_submission_creates_complaint(self):
-        response = self.client.post(
-            self.url,
+        response = self.post_submission(
             {
                 "category": Complaint.Category.ACADEMIC,
                 "title": "Library computer issue",
