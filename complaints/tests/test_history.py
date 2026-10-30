@@ -290,9 +290,12 @@ class ComplaintSubmissionCreatesHistoryTests(TestCase):
         self.client.force_login(self.user)
 
     def test_submission_via_view_creates_initial_history(self):
+        self.client.get(reverse("complaints:new"))
+        token = self.client.session["complaint_form_token"]
         self.client.post(
             reverse("complaints:new"),
-            {"category": "OTHER", "title": "My issue", "description": "Details here."},
+            {"category": "OTHER", "title": "My issue", "description": "Details here.",
+             "form_token": token},
         )
         complaint = Complaint.objects.get(user=self.user)
         entries = ComplaintHistory.objects.filter(complaint=complaint)
@@ -301,9 +304,12 @@ class ComplaintSubmissionCreatesHistoryTests(TestCase):
         self.assertEqual(entries.first().previous_status, "")
 
     def test_submission_via_view_stores_submitted_details(self):
+        self.client.get(reverse("complaints:new"))
+        token = self.client.session["complaint_form_token"]
         self.client.post(
             reverse("complaints:new"),
-            {"category": "OTHER", "title": "My issue", "description": "Details here."},
+            {"category": "OTHER", "title": "My issue", "description": "Details here.",
+             "form_token": token},
         )
         complaint = Complaint.objects.get(user=self.user)
         entry = ComplaintHistory.objects.get(complaint=complaint)
