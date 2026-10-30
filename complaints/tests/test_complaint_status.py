@@ -15,13 +15,13 @@ class ComplaintStatusTests(TestCase):
         self.user = User.objects.create_user(
             username="user1",
             email="user1@example.com",
-            password="TestPassword123!",
+            password=None,
         )
 
         self.other_user = User.objects.create_user(
             username="user2",
             email="user2@example.com",
-            password="TestPassword123!",
+            password=None,
         )
 
         self.complaint = Complaint.objects.create(

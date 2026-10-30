@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ complaint.complaint_id }} | Smart Complaint Management System{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1>{{ complaint.complaint_id }} - {{ complaint.title }}</h1>
+  <p><strong>Category:</strong> {{ complaint.get_category_display }}</p>
+  <p><strong>Status:</strong> <span class="badge badge-{{ complaint.status|lower }}">{{ complaint.get_status_display }}</span></p>
+  <p><strong>Submitted:</strong> {{ complaint.created_at|date:"d M Y, H:i" }}</p>
+  <p><strong>Last updated:</strong> {{ complaint.updated_at|date:"d M Y, H:i" }}</p>
+  <h2>Description</h2>
+  <p>{{ complaint.description|linebreaksbr }}</p>
+
+  {% include "complaints/partials/_history.html" with history=entries %}
+
+  <p><a href="{% url 'complaints:my_list' %}">&laquo; Back to My Complaints</a></p>
+</section>
+{% endblock %}

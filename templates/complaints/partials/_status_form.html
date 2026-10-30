@@ -1,0 +1,15 @@
+{% if next_statuses %}
+  {% for ns in next_statuses %}
+  <form method="post" action="{% url 'complaints:admin_update_status' complaint.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="status" value="{{ ns.value }}">
+    <button type="submit" class="btn btn-primary">Move to "{{ ns.label }}"</button>
+  </form>
+  {% endfor %}
+{% else %}
+  {% if complaint.status == "CLOSED" %}
+  <p class="muted">This complaint is closed. No further status changes are available.</p>
+  {% else %}
+  <p class="muted">No status transitions are currently available.</p>
+  {% endif %}
+{% endif %}

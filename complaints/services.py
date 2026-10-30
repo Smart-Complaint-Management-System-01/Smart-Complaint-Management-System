@@ -20,10 +20,10 @@ class InvalidTransition(Exception):
 
 
 def record_history(complaint, previous_status, new_status, actor=None, details=""):
-    """Write one ComplaintHistory row (canonical helper)."""
+    """Write one ComplaintHistory row (SAD 3.9 non-repudiation)."""
     return ComplaintHistory.objects.create(
         complaint=complaint,
-        previous_status=previous_status,
+        previous_status=previous_status or "",
         new_status=new_status,
         updated_by=actor,
         update_details=details,
@@ -34,7 +34,7 @@ def record_initial_status(complaint, actor=None, details="Complaint submitted"):
     """Record the SUBMITTED status when a complaint is first created (idempotent)."""
     ComplaintHistory.objects.get_or_create(
         complaint=complaint,
-        previous_status=None,
+        previous_status="",
         new_status=Complaint.Status.SUBMITTED,
         defaults={"updated_by": actor, "update_details": details},
     )

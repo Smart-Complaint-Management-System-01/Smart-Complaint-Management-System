@@ -11,8 +11,8 @@ User = get_user_model()
 class AdminManagementTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="u@x.com", email="u@x.com", password="Pass12345!")
-        cls.admin = User.objects.create_user(username="a@x.com", email="a@x.com", password="Pass12345!", role=User.Role.ADMIN)
+        cls.user = User.objects.create_user(username="u@x.com", email="u@x.com", password=None)
+        cls.admin = User.objects.create_user(username="a@x.com", email="a@x.com", password=None, role=User.Role.ADMIN)
         cls.complaint = Complaint.objects.create(
             user=cls.user, category="HOSTEL", title="Leaky tap", description="The tap has been leaking for a week."
         )
@@ -51,10 +51,10 @@ class StatusTransitionTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(
-            username="tu@x.com", email="tu@x.com", password="Pass12345!"
+            username="tu@x.com", email="tu@x.com", password=None
         )
         cls.admin = User.objects.create_user(
-            username="ta@x.com", email="ta@x.com", password="Pass12345!",
+            username="ta@x.com", email="ta@x.com", password=None,
             role=User.Role.ADMIN,
         )
 

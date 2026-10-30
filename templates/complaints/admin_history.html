@@ -23,7 +23,7 @@
       <tbody>
         {% for entry in entries %}
           <tr>
-            <td>{{ entry.updated_at|date:"d M Y, H:i" }}</td>
+            <td>{{ entry.created_at|date:"d M Y, H:i" }}</td>
             <td>
               {% if entry.previous_status %}
                 {{ entry.get_previous_status_display }} &rarr;

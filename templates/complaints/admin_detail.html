@@ -9,22 +9,21 @@
   <p><strong>Status:</strong> <span class="badge badge-{{ complaint.status|lower }}">{{ complaint.get_status_display }}</span></p>
   <h2>Description</h2>
   <p>{{ complaint.description|linebreaksbr }}</p>
-  {% if next_statuses %}
-    {% for ns in next_statuses %}
-    <form method="post" action="{% url 'complaints:admin_update_status' complaint.pk %}">
-      {% csrf_token %}
-      <input type="hidden" name="status" value="{{ ns.value }}">
-      <button type="submit" class="btn btn-primary">Move to "{{ ns.label }}"</button>
-    </form>
-    {% endfor %}
-  {% else %}
-  {% if complaint.status == "CLOSED" %}
-  <p class="muted">This complaint is closed. No further status changes are available.</p>
-  {% else %}
-  <p class="muted">No status transitions are currently available.</p>
-  {% endif %}
-  {% endif %}
-  <p><a href="{% url 'complaints:admin_complaint_history' complaint.pk %}">View History</a></p>
+
+  <h2>Status Action</h2>
+  {% include "complaints/partials/_status_form.html" %}
+
+  <h2>Assignment</h2>
+  {% include "complaints/partials/_assign_form.html" %}
+
+  <h2>Update</h2>
+  {% include "complaints/partials/_update_form.html" %}
+
+  <h2>Resolution</h2>
+  {% include "complaints/partials/_resolve_form.html" %}
+
+  {% include "complaints/partials/_history.html" with history=history %}
+
   <p><a href="{% url 'complaints:admin_list' %}">&laquo; Back to all complaints</a></p>
 </section>
 {% endblock %}

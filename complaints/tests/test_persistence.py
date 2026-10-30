@@ -8,7 +8,7 @@ User = get_user_model()
 
 class PersistenceTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="u@x.com", email="u@x.com", password="Pass12345!")
+        self.user = User.objects.create_user(username="u@x.com", email="u@x.com", password=None)
 
     def make(self, **kw):
         data = dict(user=self.user, category="OTHER", title="A title", description="A long enough description text.")

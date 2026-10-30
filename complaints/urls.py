@@ -28,6 +28,11 @@ urlpatterns = [
 
     # FR-06
     path(
+        "complaints/<str:complaint_id>/",
+        views.complaint_detail,
+        name="complaint_detail",
+    ),
+    path(
         "complaints/<str:complaint_id>/history/",
         views.complaint_history,
         name="complaint_history",

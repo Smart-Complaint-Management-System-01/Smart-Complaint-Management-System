@@ -11,7 +11,7 @@ from accounts.models import User
 
 from .forms import ComplaintForm
 from .models import Complaint, ComplaintHistory
-from .services import NEXT_STATUS, InvalidTransition, change_status, record_initial_status
+from .services import NEXT_STATUS, InvalidTransition, change_status, record_history, record_initial_status
 
 
 # FR-04 and NFR-06: Complaint submission and validation feedback
@@ -25,7 +25,10 @@ def new_complaint(request):
                 complaint = form.save(commit=False)
                 complaint.user = request.user
                 complaint.save()
-                record_initial_status(complaint, actor=request.user)
+                record_history(
+                    complaint, "", Complaint.Status.SUBMITTED,
+                    actor=request.user, details="Complaint submitted",
+                )
 
             messages.success(
                 request,
@@ -66,6 +69,21 @@ def my_complaints(request):
         request,
         "complaints/my_complaints.html",
         {"complaints": complaints},
+    )
+
+
+# FR-06: User complaint detail
+@role_required(User.Role.USER)
+def complaint_detail(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+    entries = complaint.history.select_related("updated_by").all()
+    return render(
+        request,
+        "complaints/complaint_detail.html",
+        {"complaint": complaint, "entries": entries},
     )
 
 
@@ -111,12 +129,17 @@ def admin_detail(request, pk):
         Complaint.objects.select_related("user"),
         pk=pk,
     )
+    from .models import Department
     return render(
         request,
         "complaints/admin_detail.html",
         {
             "complaint": complaint,
+            "next_status": next(iter(sorted(NEXT_STATUS.get(complaint.status, set()))), None),
             "next_statuses": sorted(NEXT_STATUS.get(complaint.status, set())),
+            "history": complaint.history.select_related("updated_by"),
+            "departments": Department.objects.all(),
+            "admin_users": User.objects.filter(role=User.Role.ADMIN, is_active=True),
         },
     )
 
