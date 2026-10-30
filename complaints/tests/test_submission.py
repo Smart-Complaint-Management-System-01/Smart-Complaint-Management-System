@@ -14,12 +14,12 @@ class ComplaintSubmissionTests(TestCase):
         self.user = User.objects.create_user(
             username="user@example.com",
             email="user@example.com",
-            password="Pass12345!",
+            password=None,
         )
         self.admin = User.objects.create_user(
             username="admin@example.com",
             email="admin@example.com",
-            password="Pass12345!",
+            password=None,
             role=User.Role.ADMIN,
         )
         self.url = reverse("complaints:new")

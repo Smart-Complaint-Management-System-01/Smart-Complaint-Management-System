@@ -11,10 +11,10 @@ class AdminAuthorizationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(
-            username="u@x.com", email="u@x.com", password="Pass12345!"
+            username="u@x.com", email="u@x.com", password=None
         )
         cls.admin = User.objects.create_user(
-            username="a@x.com", email="a@x.com", password="Pass12345!",
+            username="a@x.com", email="a@x.com", password=None,
             role=User.Role.ADMIN,
         )
         cls.complaint = Complaint.objects.create(

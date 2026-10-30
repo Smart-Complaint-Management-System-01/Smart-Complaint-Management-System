@@ -7,7 +7,7 @@ User = get_user_model()
 
 class ComplaintFormUsabilityTests(TestCase):
     def setUp(self):
-        user = User.objects.create_user(username="u@x.com", email="u@x.com", password="Pass12345!")
+        user = User.objects.create_user(username="u@x.com", email="u@x.com", password=None)
         self.client.force_login(user)  # a normal USER; admins cannot lodge complaints
         self.response = self.client.get(reverse("complaints:new"))
         self.html = self.response.content.decode()
