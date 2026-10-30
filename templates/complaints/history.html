@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}History - {{ complaint.complaint_id }}{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h1>History for {{ complaint.complaint_id }}</h1>
+  <p><strong>Title:</strong> {{ complaint.title }}</p>
+  <p><strong>Current status:</strong> {{ complaint.get_status_display }}</p>
+  <p><strong>Submitted:</strong> {{ complaint.created_at|date:"d M Y, H:i" }}</p>
+
+  {% if entries %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Change</th>
+          <th>By</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+          <tr>
+            <td>{{ entry.created_at|date:"d M Y, H:i" }}</td>
+            <td>
+              {% if entry.previous_status %}
+                {{ entry.get_previous_status_display }} &rarr;
+              {% endif %}
+              {{ entry.get_new_status_display }}
+            </td>
+            <td>{% if entry.updated_by %}{{ entry.updated_by.get_full_name|default:entry.updated_by.email }}{% else %}System{% endif %}</td>
+            <td>{{ entry.update_details|linebreaksbr }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No history recorded yet.</p>
+  {% endif %}
+
+  <p><a href="{% url 'complaints:my_list' %}">&laquo; Back to My Complaints</a></p>
+</section>
+{% endblock %}

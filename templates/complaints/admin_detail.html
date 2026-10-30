@@ -2,22 +2,28 @@
 {% block title %}{{ complaint.complaint_id }}{% endblock %}
 {% block content %}
 <section class="card">
-  <h1>{{ complaint.complaint_id }} – {{ complaint.title }}</h1>
+  <h1>{{ complaint.complaint_id }} - {{ complaint.title }}</h1>
   <p><strong>Submitted by:</strong> {{ complaint.user.get_full_name|default:complaint.user.email }} ({{ complaint.user.email }})</p>
   <p><strong>Category:</strong> {{ complaint.get_category_display }}</p>
   <p><strong>Submitted on:</strong> {{ complaint.created_at|date:"d M Y, H:i" }}</p>
   <p><strong>Status:</strong> <span class="badge badge-{{ complaint.status|lower }}">{{ complaint.get_status_display }}</span></p>
   <h2>Description</h2>
   <p>{{ complaint.description|linebreaksbr }}</p>
-  {% if next_status %}
-  <form method="post" action="{% url 'complaints:admin_update_status' complaint.pk %}">
-    {% csrf_token %}
-    <input type="hidden" name="status" value="{{ next_status.value }}">
-    <button type="submit" class="btn btn-primary">Move to “{{ next_status.label }}”</button>
-  </form>
-  {% else %}
-  <p class="muted">This complaint is resolved. No further status changes are available.</p>
-  {% endif %}
+
+  <h2>Status Action</h2>
+  {% include "complaints/partials/_status_form.html" %}
+
+  <h2>Assignment</h2>
+  {% include "complaints/partials/_assign_form.html" %}
+
+  <h2>Update</h2>
+  {% include "complaints/partials/_update_form.html" %}
+
+  <h2>Resolution</h2>
+  {% include "complaints/partials/_resolve_form.html" %}
+
+  {% include "complaints/partials/_history.html" with history=history %}
+
   <p><a href="{% url 'complaints:admin_list' %}">&laquo; Back to all complaints</a></p>
 </section>
 {% endblock %}

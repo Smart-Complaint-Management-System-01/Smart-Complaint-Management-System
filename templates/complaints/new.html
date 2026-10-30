@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}Lodge a Complaint | Smart Complaint Management System{% endblock %}
@@ -34,6 +33,7 @@
 
       <form method="post" action="{% url 'complaints:new' %}" data-once>
         {% csrf_token %}
+        {# NFR-04: one-time token that prevents duplicate complaint records #}
         <input type="hidden" name="form_token" value="{{ request.session.complaint_form_token }}">
 
         {% if form.non_field_errors %}

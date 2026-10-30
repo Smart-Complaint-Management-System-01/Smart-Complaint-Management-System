@@ -1,4 +1,3 @@
-
 import logging
 import uuid
 
@@ -14,16 +13,21 @@ from accounts.models import User
 
 from .forms import ComplaintForm
 from .models import Complaint
-from .services import NEXT_STATUS, InvalidTransition, change_status
+from .services import NEXT_STATUS, InvalidTransition, change_status, record_history
 
 logger = logging.getLogger(__name__)
 
 
 def _issue_form_token(request):
+    """NFR-04: one-time token that stops the same submission being saved twice."""
+    request.session["complaint_form_token"] = uuid.uuid4().hex
+    
+def _issue_form_token(request):
+    """NFR-04: one-time token that stops the same submission being saved twice."""
     request.session["complaint_form_token"] = uuid.uuid4().hex
 
 
-# FR-04, NFR-04 and NFR-06: Complaint submission, recovery and validation feedback
+# FR-04, NFR-04 and NFR-06: Complaint submission, error recovery and validation feedback
 @role_required(User.Role.USER)
 def new_complaint(request):
     if request.method == "POST":
@@ -33,7 +37,7 @@ def new_complaint(request):
             return redirect("complaints:my_list")
 
         form = ComplaintForm(request.POST)
-
+        
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -41,10 +45,14 @@ def new_complaint(request):
                     complaint.user = request.user
                     complaint.submission_token = token
                     complaint.save()
+                    record_history(
+                        complaint, "", Complaint.Status.SUBMITTED,
+                        actor=request.user, details="Complaint submitted",
+                    )
             except IntegrityError:
+                # same token already saved (double click / replay): reuse that complaint
                 complaint = Complaint.objects.filter(
-                    user=request.user,
-                    submission_token=token,
+                    user=request.user, submission_token=token
                 ).first()
                 if complaint is None:
                     logger.exception("Complaint submission failed")
@@ -55,7 +63,6 @@ def new_complaint(request):
                     return render(
                         request, "complaints/new.html", {"form": form}, status=500
                     )
-
                 request.session.pop("complaint_form_token", None)
                 return redirect(
                     reverse(
@@ -73,7 +80,7 @@ def new_complaint(request):
                     request, "complaints/new.html", {"form": form}, status=500
                 )
 
-            request.session.pop("complaint_form_token", None)
+            request.session.pop("complaint_form_token", None)   # consumed only on success
             messages.success(
                 request,
                 "Your complaint was submitted successfully.",
@@ -99,7 +106,7 @@ def submission_confirmation(request, complaint_id):
         request.user.complaints,
         complaint_id=complaint_id,
     )
-    _issue_form_token(request)
+    _issue_form_token(request)          # the form on this page must be submittable too
     return render(
         request,
         "complaints/new.html",
@@ -107,18 +114,62 @@ def submission_confirmation(request, complaint_id):
     )
 
 
-# FR-05: View my complaints
+# FR-05 and NFR-01: View my complaints (paginated)
 @role_required(User.Role.USER)
 def my_complaints(request):
-    complaints = Complaint.objects.filter(user=request.user)
+    queryset = Complaint.objects.filter(user=request.user).order_by("-created_at")
+    page = Paginator(queryset, 10).get_page(request.GET.get("page"))
     return render(
         request,
         "complaints/my_complaints.html",
-        {"complaints": complaints},
+        {"complaints": page, "page": page},
     )
 
 
-# FR-08: Admin complaint management
+# FR-06: User complaint detail
+@role_required(User.Role.USER)
+def complaint_detail(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+    entries = complaint.history.select_related("updated_by").all()
+    return render(
+        request,
+        "complaints/complaint_detail.html",
+        {"complaint": complaint, "entries": entries},
+    )
+
+
+# FR-06: User complaint history
+@role_required(User.Role.USER)
+def complaint_history(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+    entries = complaint.history.select_related("updated_by").all()
+    return render(
+        request,
+        "complaints/history.html",
+        {"complaint": complaint, "entries": entries},
+    )
+
+
+# FR-06: Admin complaint history
+@admin_required
+def admin_complaint_history(request, pk):
+    complaint = get_object_or_404(
+        Complaint.objects.select_related("user"),
+        pk=pk,
+    )
+    entries = complaint.history.select_related("updated_by").all()
+    return render(
+        request,
+        "complaints/admin_history.html",
+        {"complaint": complaint, "entries": entries},
+    )
+
 @admin_required
 def admin_list(request):
     queryset = Complaint.objects.select_related("user")
@@ -132,12 +183,17 @@ def admin_detail(request, pk):
         Complaint.objects.select_related("user"),
         pk=pk,
     )
+    from .models import Department
     return render(
         request,
         "complaints/admin_detail.html",
         {
             "complaint": complaint,
-            "next_status": NEXT_STATUS.get(complaint.status),
+            "next_status": next(iter(sorted(NEXT_STATUS.get(complaint.status, set()))), None),
+            "next_statuses": sorted(NEXT_STATUS.get(complaint.status, set())),
+            "history": complaint.history.select_related("updated_by"),
+            "departments": Department.objects.all(),
+            "admin_users": User.objects.filter(role=User.Role.ADMIN, is_active=True),
         },
     )
 
@@ -148,7 +204,7 @@ def admin_update_status(request, pk):
     complaint = get_object_or_404(Complaint, pk=pk)
 
     try:
-        change_status(complaint, request.POST.get("status"))
+        change_status(complaint, request.POST.get("status"), actor=request.user)
     except InvalidTransition as exc:
         messages.error(request, str(exc))
     else:

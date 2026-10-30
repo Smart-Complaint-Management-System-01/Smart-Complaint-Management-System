@@ -15,7 +15,7 @@ class ComplaintValidationTests(TestCase):
         self.user = User.objects.create_user(
             username="validationuser",
             email="validation@example.com",
-            password="TestPassword123!",
+            password=None,
         )
         self.client.force_login(self.user)
         self.url = reverse("complaints:new")
