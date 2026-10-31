@@ -1,4 +1,3 @@
-
 from django.urls import path
 
 from . import views
@@ -7,10 +6,18 @@ app_name = "complaints"
 
 urlpatterns = [
     # FR-05 - Prajna
-    path("complaints/", views.my_complaints, name="my_list"),
+    path(
+        "complaints/",
+        views.my_complaints,
+        name="my_list",
+    ),
 
     # FR-04 - Prajna
-    path("complaints/new/", views.new_complaint, name="new"),
+    path(
+        "complaints/new/",
+        views.new_complaint,
+        name="new",
+    ),
     path(
         "complaints/<str:complaint_id>/submitted/",
         views.submission_confirmation,
@@ -18,15 +25,30 @@ urlpatterns = [
     ),
 
     # FR-08 - Rakshita
-    path("admin/complaints/", views.admin_list, name="admin_list"),
-    path("admin/complaints/<int:pk>/", views.admin_detail, name="admin_detail"),
+    path(
+        "admin/complaints/",
+        views.admin_list,
+        name="admin_list",
+    ),
+    path(
+        "admin/complaints/<int:pk>/",
+        views.admin_detail,
+        name="admin_detail",
+    ),
     path(
         "admin/complaints/<int:pk>/status/",
         views.admin_update_status,
         name="admin_update_status",
     ),
 
-    # FR-06
+    # FR-07 - Prajna: Admin adds an update
+    path(
+        "admin/complaints/<int:pk>/update/",
+        views.admin_add_update,
+        name="admin_add_update",
+    ),
+
+    # FR-06 - Prajna
     path(
         "complaints/<str:complaint_id>/",
         views.complaint_detail,
