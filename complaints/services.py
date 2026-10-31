@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils import timezone
 
 from .models import Complaint, ComplaintHistory
 
@@ -41,6 +42,8 @@ def record_initial_status(complaint, actor=None, details="Complaint submitted"):
 
 
 def change_status(complaint, new_status, actor=None, details=""):
+    if new_status == S.RESOLVED:
+        raise InvalidTransition("Record the resolution details to resolve a complaint.")
     if new_status not in NEXT_STATUS.get(complaint.status, set()):
         raise InvalidTransition(
             f"Cannot move a complaint from '{complaint.get_status_display()}' to '{new_status}'."
@@ -50,4 +53,20 @@ def change_status(complaint, new_status, actor=None, details=""):
         complaint.status = new_status
         complaint.save(update_fields=["status", "updated_at"])
         record_history(complaint, previous, new_status, actor, details)
+    return complaint
+
+
+def resolve_complaint(complaint, resolution_text, actor=None):
+    resolution_text = (resolution_text or "").strip()
+    if not resolution_text:
+        raise ValueError("Please enter the resolution details.")
+    if complaint.status != S.IN_PROGRESS:
+        raise InvalidTransition("Only complaints that are In Progress can be resolved.")
+    previous = complaint.status
+    with transaction.atomic():
+        complaint.status = S.RESOLVED
+        complaint.resolution_details = resolution_text
+        complaint.resolved_at = timezone.now()
+        complaint.save(update_fields=["status", "resolution_details", "resolved_at", "updated_at"])
+        record_history(complaint, previous, S.RESOLVED, actor, "Resolved: " + resolution_text)
     return complaint

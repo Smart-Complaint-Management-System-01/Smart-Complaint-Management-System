@@ -22,10 +22,6 @@ logger = logging.getLogger(__name__)
 def _issue_form_token(request):
     """NFR-04: one-time token that stops the same submission being saved twice."""
     request.session["complaint_form_token"] = uuid.uuid4().hex
-    
-def _issue_form_token(request):
-    """NFR-04: one-time token that stops the same submission being saved twice."""
-    request.session["complaint_form_token"] = uuid.uuid4().hex
 
 
 # FR-04, NFR-04 and NFR-06: Complaint submission, error recovery and validation feedback
@@ -38,7 +34,7 @@ def new_complaint(request):
             return redirect("complaints:my_list")
 
         form = ComplaintForm(request.POST)
-        
+
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -80,19 +76,18 @@ def new_complaint(request):
                 return render(
                     request, "complaints/new.html", {"form": form}, status=500
                 )
-
-            request.session.pop("complaint_form_token", None)   # consumed only on success
-            messages.success(
-                request,
-                "Your complaint was submitted successfully.",
-            )
-
-            return redirect(
-                reverse(
-                    "complaints:submission_confirmation",
-                    args=[complaint.complaint_id],
+            else:
+                request.session.pop("complaint_form_token", None)   # consumed only on success
+                messages.success(
+                    request,
+                    "Your complaint was submitted successfully.",
                 )
-            )
+                return redirect(
+                    reverse(
+                        "complaints:submission_confirmation",
+                        args=[complaint.complaint_id],
+                    )
+                )
     else:
         form = ComplaintForm()
         _issue_form_token(request)
@@ -191,7 +186,6 @@ def admin_detail(request, pk):
         Complaint.objects.select_related("user"),
         pk=pk,
     )
-    from .models import Department
     return render(
         request,
         "complaints/admin_detail.html",
@@ -220,5 +214,21 @@ def admin_update_status(request, pk):
             request,
             "Status updated to " + complaint.get_status_display() + ".",
         )
+
+    return redirect("complaints:admin_detail", pk=pk)
+
+
+# FR-10: Complaint resolution
+@admin_required
+@require_POST
+def admin_resolve(request, pk):
+    complaint = get_object_or_404(Complaint, pk=pk)
+
+    try:
+        resolve_complaint(complaint, request.POST.get("resolution_text", ""), actor=request.user)
+    except (InvalidTransition, ValueError) as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Complaint marked as resolved.")
 
     return redirect("complaints:admin_detail", pk=pk)

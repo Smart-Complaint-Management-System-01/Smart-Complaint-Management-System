@@ -25,6 +25,11 @@ urlpatterns = [
         views.admin_update_status,
         name="admin_update_status",
     ),
+    path(
+        "admin/complaints/<int:pk>/resolve/",
+        views.admin_resolve,
+        name="admin_resolve",
+    ),
 
     # FR-06
     path(
