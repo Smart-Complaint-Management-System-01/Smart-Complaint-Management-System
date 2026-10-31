@@ -312,3 +312,37 @@ def admin_add_update(request, pk):
             messages.success(request, "Update added.")
 
     return redirect("complaints:admin_detail", pk=pk)
+
+# FR-07: User adds additional information to their own complaint
+@role_required(User.Role.USER)
+@require_POST
+def add_info(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+
+    form = UpdateNoteForm(request.POST)
+
+    if not form.is_valid():
+        for error in form.errors["note"]:
+            messages.error(request, error)
+
+    else:
+        try:
+            add_update(
+                complaint,
+                request.user,
+                form.cleaned_data["note"],
+            )
+
+        except (InvalidTransition, ValueError) as exc:
+            messages.error(request, str(exc))
+
+        else:
+            messages.success(
+                request,
+                "Your information was added to the complaint.",
+            )
+
+    return redirect("complaints:complaint_detail", complaint_id=complaint_id)
