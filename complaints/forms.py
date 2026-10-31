@@ -55,3 +55,10 @@ class ComplaintForm(forms.ModelForm):
             )
 
         return description
+
+class UpdateNoteForm(forms.Form):
+    note = forms.CharField(
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        error_messages={"required": "Please enter an update note."},
+    )

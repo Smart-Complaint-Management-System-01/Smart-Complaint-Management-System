@@ -11,18 +11,20 @@ from django.views.decorators.http import require_POST
 from accounts.decorators import admin_required, role_required
 from accounts.models import User
 
-from .forms import ComplaintForm
+from .forms import ComplaintForm, UpdateNoteForm
 from .models import Complaint
-from .services import NEXT_STATUS, InvalidTransition, change_status, record_history
+from .services import (
+    NEXT_STATUS,
+    InvalidTransition,
+    add_update,
+    change_status,
+    record_history,
+)
 from .search import ComplaintFilterForm, filter_complaints
 
 logger = logging.getLogger(__name__)
 
 
-def _issue_form_token(request):
-    """NFR-04: one-time token that stops the same submission being saved twice."""
-    request.session["complaint_form_token"] = uuid.uuid4().hex
-    
 def _issue_form_token(request):
     """NFR-04: one-time token that stops the same submission being saved twice."""
     request.session["complaint_form_token"] = uuid.uuid4().hex
@@ -33,12 +35,13 @@ def _issue_form_token(request):
 def new_complaint(request):
     if request.method == "POST":
         token = request.POST.get("form_token")
+
         if not token or token != request.session.get("complaint_form_token"):
             messages.warning(request, "This complaint was already submitted.")
             return redirect("complaints:my_list")
 
         form = ComplaintForm(request.POST)
-        
+
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -46,15 +49,22 @@ def new_complaint(request):
                     complaint.user = request.user
                     complaint.submission_token = token
                     complaint.save()
+
                     record_history(
-                        complaint, "", Complaint.Status.SUBMITTED,
-                        actor=request.user, details="Complaint submitted",
+                        complaint,
+                        "",
+                        Complaint.Status.SUBMITTED,
+                        actor=request.user,
+                        details="Complaint submitted",
                     )
+
             except IntegrityError:
-                # same token already saved (double click / replay): reuse that complaint
+                # Same token already saved (double click / replay): reuse that complaint.
                 complaint = Complaint.objects.filter(
-                    user=request.user, submission_token=token
+                    user=request.user,
+                    submission_token=token,
                 ).first()
+
                 if complaint is None:
                     logger.exception("Complaint submission failed")
                     messages.error(
@@ -62,15 +72,21 @@ def new_complaint(request):
                         "We couldn't save your complaint. Please try again.",
                     )
                     return render(
-                        request, "complaints/new.html", {"form": form}, status=500
+                        request,
+                        "complaints/new.html",
+                        {"form": form},
+                        status=500,
                     )
+
                 request.session.pop("complaint_form_token", None)
+
                 return redirect(
                     reverse(
                         "complaints:submission_confirmation",
                         args=[complaint.complaint_id],
                     )
                 )
+
             except DatabaseError:
                 logger.exception("Complaint submission failed")
                 messages.error(
@@ -78,10 +94,13 @@ def new_complaint(request):
                     "We couldn't save your complaint. Please try again.",
                 )
                 return render(
-                    request, "complaints/new.html", {"form": form}, status=500
+                    request,
+                    "complaints/new.html",
+                    {"form": form},
+                    status=500,
                 )
 
-            request.session.pop("complaint_form_token", None)   # consumed only on success
+            request.session.pop("complaint_form_token", None)
             messages.success(
                 request,
                 "Your complaint was submitted successfully.",
@@ -93,6 +112,7 @@ def new_complaint(request):
                     args=[complaint.complaint_id],
                 )
             )
+
     else:
         form = ComplaintForm()
         _issue_form_token(request)
@@ -107,7 +127,9 @@ def submission_confirmation(request, complaint_id):
         request.user.complaints,
         complaint_id=complaint_id,
     )
-    _issue_form_token(request)          # the form on this page must be submittable too
+
+    _issue_form_token(request)
+
     return render(
         request,
         "complaints/new.html",
@@ -120,6 +142,7 @@ def submission_confirmation(request, complaint_id):
 def my_complaints(request):
     queryset = Complaint.objects.filter(user=request.user).order_by("-created_at")
     page = Paginator(queryset, 10).get_page(request.GET.get("page"))
+
     return render(
         request,
         "complaints/my_complaints.html",
@@ -134,7 +157,9 @@ def complaint_detail(request, complaint_id):
         request.user.complaints,
         complaint_id=complaint_id,
     )
+
     entries = complaint.history.select_related("updated_by").all()
+
     return render(
         request,
         "complaints/complaint_detail.html",
@@ -149,7 +174,9 @@ def complaint_history(request, complaint_id):
         request.user.complaints,
         complaint_id=complaint_id,
     )
+
     entries = complaint.history.select_related("updated_by").all()
+
     return render(
         request,
         "complaints/history.html",
@@ -164,26 +191,45 @@ def admin_complaint_history(request, pk):
         Complaint.objects.select_related("user"),
         pk=pk,
     )
+
     entries = complaint.history.select_related("updated_by").all()
+
     return render(
         request,
         "complaints/admin_history.html",
         {"complaint": complaint, "entries": entries},
     )
 
-# FR-08 / FR-11: admin list with search and filtering
+
+# FR-08 / FR-11: Admin list with search and filtering
 @admin_required
 def admin_list(request):
     form = ComplaintFilterForm(request.GET or None)
-    queryset = Complaint.objects.select_related("user", "assigned_to", "assigned_department")
+
+    queryset = Complaint.objects.select_related(
+        "user",
+        "assigned_to",
+        "assigned_department",
+    )
+
     if form.is_valid():
         queryset = filter_complaints(queryset, form.cleaned_data)
+
     page = Paginator(queryset, 10).get_page(request.GET.get("page"))
+
     params = request.GET.copy()
     params.pop("page", None)
-    return render(request, "complaints/admin_list.html", {
-        "page": page, "form": form, "querystring": params.urlencode(),
-    })
+
+    return render(
+        request,
+        "complaints/admin_list.html",
+        {
+            "page": page,
+            "form": form,
+            "querystring": params.urlencode(),
+        },
+    )
+
 
 @admin_required
 def admin_detail(request, pk):
@@ -191,17 +237,27 @@ def admin_detail(request, pk):
         Complaint.objects.select_related("user"),
         pk=pk,
     )
+
     from .models import Department
+
     return render(
         request,
         "complaints/admin_detail.html",
         {
             "complaint": complaint,
-            "next_status": next(iter(sorted(NEXT_STATUS.get(complaint.status, set()))), None),
-            "next_statuses": sorted(NEXT_STATUS.get(complaint.status, set())),
+            "next_status": next(
+                iter(sorted(NEXT_STATUS.get(complaint.status, set()))),
+                None,
+            ),
+            "next_statuses": sorted(
+                NEXT_STATUS.get(complaint.status, set())
+            ),
             "history": complaint.history.select_related("updated_by"),
             "departments": Department.objects.all(),
-            "admin_users": User.objects.filter(role=User.Role.ADMIN, is_active=True),
+            "admin_users": User.objects.filter(
+                role=User.Role.ADMIN,
+                is_active=True,
+            ),
         },
     )
 
@@ -212,9 +268,15 @@ def admin_update_status(request, pk):
     complaint = get_object_or_404(Complaint, pk=pk)
 
     try:
-        change_status(complaint, request.POST.get("status"), actor=request.user)
+        change_status(
+            complaint,
+            request.POST.get("status"),
+            actor=request.user,
+        )
+
     except InvalidTransition as exc:
         messages.error(request, str(exc))
+
     else:
         messages.success(
             request,
@@ -222,3 +284,65 @@ def admin_update_status(request, pk):
         )
 
     return redirect("complaints:admin_detail", pk=pk)
+
+
+# FR-07: Admin adds an update to a complaint
+@admin_required
+@require_POST
+def admin_add_update(request, pk):
+    complaint = get_object_or_404(Complaint, pk=pk)
+    form = UpdateNoteForm(request.POST)
+
+    if not form.is_valid():
+        for error in form.errors["note"]:
+            messages.error(request, error)
+
+    else:
+        try:
+            add_update(
+                complaint,
+                request.user,
+                form.cleaned_data["note"],
+            )
+
+        except (InvalidTransition, ValueError) as exc:
+            messages.error(request, str(exc))
+
+        else:
+            messages.success(request, "Update added.")
+
+    return redirect("complaints:admin_detail", pk=pk)
+
+# FR-07: User adds additional information to their own complaint
+@role_required(User.Role.USER)
+@require_POST
+def add_info(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+
+    form = UpdateNoteForm(request.POST)
+
+    if not form.is_valid():
+        for error in form.errors["note"]:
+            messages.error(request, error)
+
+    else:
+        try:
+            add_update(
+                complaint,
+                request.user,
+                form.cleaned_data["note"],
+            )
+
+        except (InvalidTransition, ValueError) as exc:
+            messages.error(request, str(exc))
+
+        else:
+            messages.success(
+                request,
+                "Your information was added to the complaint.",
+            )
+
+    return redirect("complaints:complaint_detail", complaint_id=complaint_id)

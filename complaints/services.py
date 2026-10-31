@@ -51,3 +51,24 @@ def change_status(complaint, new_status, actor=None, details=""):
         complaint.save(update_fields=["status", "updated_at"])
         record_history(complaint, previous, new_status, actor, details)
     return complaint
+
+def add_update(complaint, actor, note):
+    note = (note or "").strip()
+
+    if not note:
+        raise ValueError("Please enter an update note.")
+
+    if complaint.status == S.RESOLVED:
+        raise InvalidTransition("Resolved complaints cannot be updated.")
+
+    with transaction.atomic():
+        record_history(
+            complaint,
+            complaint.status,
+            complaint.status,
+            actor,
+            note,
+        )
+        complaint.save(update_fields=["updated_at"])
+
+    return complaint
