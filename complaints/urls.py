@@ -64,4 +64,11 @@ urlpatterns = [
         views.admin_complaint_history,
         name="admin_complaint_history",
     ),
+
+    # FR-07 - Prajna: User adds additional information
+    path(
+        "complaints/<str:complaint_id>/update/",
+        views.add_info,
+        name="add_info",
+    ),
 ]
