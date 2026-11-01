@@ -41,6 +41,13 @@ urlpatterns = [
         name="admin_update_status",
     ),
 
+    # FR-07 - Prajna: Admin adds an update
+    path(
+        "admin/complaints/<int:pk>/update/",
+        views.admin_add_update,
+        name="admin_add_update",
+    ),
+
     # FR-09 - Prajna: Complaint assignment
     path(
         "admin/complaints/<int:pk>/assign/",
@@ -72,5 +79,12 @@ urlpatterns = [
         "admin/complaints/<int:pk>/history/",
         views.admin_complaint_history,
         name="admin_complaint_history",
+    ),
+
+    # FR-07 - Prajna: User adds additional information
+    path(
+        "complaints/<str:complaint_id>/update/",
+        views.add_info,
+        name="add_info",
     ),
 ]

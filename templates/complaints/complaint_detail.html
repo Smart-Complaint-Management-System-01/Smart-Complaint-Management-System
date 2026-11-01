@@ -5,15 +5,30 @@
 {% block content %}
 <section class="card">
   <h1>{{ complaint.complaint_id }} - {{ complaint.title }}</h1>
+
   <p><strong>Category:</strong> {{ complaint.get_category_display }}</p>
-  <p><strong>Status:</strong> <span class="badge badge-{{ complaint.status|lower }}">{{ complaint.get_status_display }}</span></p>
+
+  <p>
+    <strong>Status:</strong>
+    <span class="badge badge-{{ complaint.status|lower }}">
+      {{ complaint.get_status_display }}
+    </span>
+  </p>
+
   <p><strong>Submitted:</strong> {{ complaint.created_at|date:"d M Y, H:i" }}</p>
   <p><strong>Last updated:</strong> {{ complaint.updated_at|date:"d M Y, H:i" }}</p>
+
   <h2>Description</h2>
   <p>{{ complaint.description|linebreaksbr }}</p>
 
+  <!-- FR-07: User adds additional information -->
+  {% include "complaints/partials/_user_update_form.html" %}
+
+  <!-- FR-06: Complaint history -->
   {% include "complaints/partials/_history.html" with history=entries %}
 
-  <p><a href="{% url 'complaints:my_list' %}">&laquo; Back to My Complaints</a></p>
+  <p>
+    <a href="{% url 'complaints:my_list' %}">&laquo; Back to My Complaints</a>
+  </p>
 </section>
 {% endblock %}

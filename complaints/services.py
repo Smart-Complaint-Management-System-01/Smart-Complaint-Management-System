@@ -177,3 +177,24 @@ def assign_complaint(complaint, assigned_to=None, department=None, actor=None):
         )
 
     return complaint
+
+def add_update(complaint, actor, note):
+    note = (note or "").strip()
+
+    if not note:
+        raise ValueError("Please enter an update note.")
+
+    if complaint.status == S.RESOLVED:
+        raise InvalidTransition("Resolved complaints cannot be updated.")
+
+    with transaction.atomic():
+        record_history(
+            complaint,
+            complaint.status,
+            complaint.status,
+            actor,
+            note,
+        )
+        complaint.save(update_fields=["updated_at"])
+
+    return complaint
