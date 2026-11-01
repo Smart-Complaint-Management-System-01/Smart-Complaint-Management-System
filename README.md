@@ -151,19 +151,44 @@ GRANT ALL PRIVILEGES ON *.* TO 'your_user'@'localhost';
 
 ## Performance and concurrency (NFR-01, NFR-02)
 
-- Every response carries an `X-Response-Time` header. Requests slower than 3 seconds are logged to the `performance` logger.
-- Search and filter columns are indexed, list pages are paginated, and the database uses persistent connections (`CONN_MAX_AGE`).
-- To simulate 100 concurrent logged-in users:
+- Test NFR-02 with at least 100 distinct authenticated users against a local test database and a WSGI server. The helper below creates 100 normal user accounts and a private credentials CSV. It only operates against a local database and requires explicit confirmation:
 
-```bash
-pip install -r requirements-dev.txt
-python manage.py seed_load_test_data --users 100
-DJANGO_DEBUG=False waitress-serve --threads=16 --listen=127.0.0.1:8000 config.wsgi:application
-# in a second terminal
-python performance/load_test.py
+```powershell
+$env:DJANGO_DEBUG="True"
+python manage.py seed_load_test_users --confirm-local --count 100
 ```
 
-  On Windows PowerShell, run `$env:DJANGO_DEBUG="False"` first. Use a local database only, since the command creates 100 test accounts.
+Start the application in another terminal. Install project dependencies first if Waitress is not present:
+
+```powershell
+python -m pip install -r requirements.txt
+$env:DJANGO_DEBUG="False"
+waitress-serve --threads=100 --listen=127.0.0.1:8000 config.wsgi:application
+```
+
+Run the load against a user-only route with each account logged in independently:
+
+```powershell
+python performance/load_test.py --url http://127.0.0.1:8000/complaints/ --users-file performance/test-users.csv
+```
+
+The test synchronizes 100 authenticated clients before measurement, then issues 1,000 requests by default. It records the authenticated-client count, completed/successful/failed requests, latency median/p95/maximum, throughput, status counts and slow requests to a timestamped JSON file under `performance/results/`. It exits nonzero if any authentication or request fails, fewer than 100 clients authenticate, or any request reaches the configured 3-second latency threshold. Override request count, concurrency, threshold or report location with `--requests`, `--concurrency`, `--threshold` or `--output`. The generated credentials and reports are git-ignored; keep credentials private. After testing, stop the server and remove the temporary users and credentials file:
+
+```powershell
+python manage.py seed_load_test_users --confirm-local --cleanup
+```
+
+To run the automated 100-user integration load test and save its result under `loadtests/results/`:
+
+```powershell
+$env:NFR02_REPORT_PATH = "loadtests\results\nfr02-100-users.json"
+python manage.py test accounts.tests.test_authenticated_concurrency
+Remove-Item Env:\NFR02_REPORT_PATH
+```
+
+This test uses Django's threaded live test server and isolated test database, creates 100 temporary authenticated users, and sends 100 concurrent requests. It writes matching JSON and CSV reports with environment, latency, throughput, and failure counts; neither contains credentials. It verifies the automated integration scenario, not the separate three-minute Waitress load run above.
+
+Run against representative local data and hardware; a development test does not guarantee production capacity.
 
 ## Error recovery (NFR-04)
 
