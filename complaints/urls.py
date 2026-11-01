@@ -5,14 +5,14 @@ from . import views
 app_name = "complaints"
 
 urlpatterns = [
-    # FR-05 - Prajna
+    # FR-05 - Prajna: View my complaints
     path(
         "complaints/",
         views.my_complaints,
         name="my_list",
     ),
 
-    # FR-04 - Prajna
+    # FR-04 - Prajna: Complaint submission
     path(
         "complaints/new/",
         views.new_complaint,
@@ -24,7 +24,7 @@ urlpatterns = [
         name="submission_confirmation",
     ),
 
-    # FR-08 - Rakshita
+    # FR-08 - Rakshita: Admin complaint management
     path(
         "admin/complaints/",
         views.admin_list,
@@ -48,7 +48,21 @@ urlpatterns = [
         name="admin_add_update",
     ),
 
-    # FR-06 - Prajna
+    # FR-09 - Prajna: Complaint assignment
+    path(
+        "admin/complaints/<int:pk>/assign/",
+        views.admin_assign,
+        name="admin_assign",
+    ),
+
+    # FR-10: Complaint resolution
+    path(
+        "admin/complaints/<int:pk>/resolve/",
+        views.admin_resolve,
+        name="admin_resolve",
+    ),
+
+    # FR-06: User complaint details and history
     path(
         "complaints/<str:complaint_id>/",
         views.complaint_detail,
@@ -59,6 +73,8 @@ urlpatterns = [
         views.complaint_history,
         name="complaint_history",
     ),
+
+    # FR-06: Admin complaint history
     path(
         "admin/complaints/<int:pk>/history/",
         views.admin_complaint_history,

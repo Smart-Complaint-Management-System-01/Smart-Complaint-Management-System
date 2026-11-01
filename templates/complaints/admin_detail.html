@@ -20,6 +20,10 @@
   {% include "complaints/partials/_update_form.html" %}
 
   <h2>Resolution</h2>
+  {% if complaint.status == 'RESOLVED' and complaint.resolution_details %}
+  <p><strong>Resolution details:</strong> {{ complaint.resolution_details|linebreaksbr }}</p>
+  <p><strong>Resolved on:</strong> {{ complaint.resolved_at|date:"d M Y, H:i" }}</p>
+  {% endif %}
   {% include "complaints/partials/_resolve_form.html" %}
 
   {% include "complaints/partials/_history.html" with history=history %}

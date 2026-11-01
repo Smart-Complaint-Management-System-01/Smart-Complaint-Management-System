@@ -1,1 +1,11 @@
-{# FR-10 stub — resolve form (not yet implemented) #}
+{% if complaint.status == 'IN_PROGRESS' %}
+<h3>Record resolution</h3>
+<form method="post" action="{% url 'complaints:admin_resolve' complaint.pk %}" data-once>
+  {% csrf_token %}
+  <div class="form-group">
+    <label for="resolution_text">Resolution details</label>
+    <textarea name="resolution_text" id="resolution_text" rows="5" class="form-control" required></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Mark as resolved</button>
+</form>
+{% endif %}
