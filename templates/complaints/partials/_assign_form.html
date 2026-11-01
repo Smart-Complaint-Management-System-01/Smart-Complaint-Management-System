@@ -1,1 +1,35 @@
-{# Prajna: FR-09 #}
+{% if complaint.status == 'UNDER_REVIEW' or complaint.status == 'ASSIGNED' or complaint.status == 'IN_PROGRESS' %}
+<form method="post" action="{% url 'complaints:admin_assign' complaint.pk %}">
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="assigned_to">Assign Administrator</label>
+        <select name="assigned_to" id="assigned_to">
+            <option value="">Select an administrator</option>
+            {% for admin in admin_users %}
+                <option value="{{ admin.pk }}"
+                    {% if complaint.assigned_to_id == admin.pk %}selected{% endif %}>
+                    {{ admin.get_full_name|default:admin.username }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="department">Assign Department</label>
+        <select name="department" id="department">
+            <option value="">Select a department</option>
+            {% for department in departments %}
+                <option value="{{ department.pk }}"
+                    {% if complaint.assigned_department_id == department.pk %}selected{% endif %}>
+                    {{ department.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit">Save Assignment</button>
+</form>
+{% else %}
+<p>This complaint cannot be assigned in its current status.</p>
+{% endif %}
