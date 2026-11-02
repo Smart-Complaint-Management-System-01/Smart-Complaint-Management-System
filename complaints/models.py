@@ -34,6 +34,9 @@ class Complaint(models.Model):
     complaint_id = models.CharField(
         max_length=20, unique=True, null=True, blank=True, editable=False
     )
+    submission_token = models.CharField(
+        max_length=32, unique=True, null=True, blank=True, editable=False
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="complaints"
     )

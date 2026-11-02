@@ -11,43 +11,76 @@ from complaints.models import Complaint
 class SubmitRecoveryTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
-            username="sub@example.com", email="sub@example.com", password="Pass@12345"
-        )                                    # add role=User.Role.USER if it isn't the default
+            username="submitter@example.com",
+            email="submitter@example.com",
+            password="SecurePass123!",
+        )
         self.client.force_login(self.user)
-        self.url = reverse("complaints:new")  # check the url name in complaints/urls.py
+        self.url = reverse("complaints:new")
 
-    def _data(self):
-        self.client.get(self.url)             # issues the token
+    def _submission_data(self):
+        self.client.get(self.url)
         return {
-            "title": "Broken switch",         # match your ComplaintForm fields
-            "description": "The switch in lab 3 is broken.",
             "category": Complaint.Category.INFRASTRUCTURE,
+            "title": "Broken switch",
+            "description": "The switch in lab 3 is broken.",
             "form_token": self.client.session["complaint_form_token"],
         }
 
-    def test_failed_submission_creates_no_record(self):
-        data = self._data()
+    def test_database_failure_shows_error_and_creates_no_record(self):
+        data = self._submission_data()
         with patch.object(Complaint, "save", side_effect=DatabaseError):
-            r = self.client.post(self.url, data)
-        self.assertEqual(r.status_code, 500)
+            response = self.client.post(self.url, data)
+
+        self.assertEqual(response.status_code, 500)
+        self.assertContains(response, "save your complaint", status_code=500)
+        self.assertNotContains(response, "submitted successfully", status_code=500)
         self.assertEqual(Complaint.objects.count(), 0)
 
-    def test_failure_is_not_reported_as_success(self):
-        data = self._data()
-        with patch.object(Complaint, "save", side_effect=DatabaseError):
-            r = self.client.post(self.url, data)
-        self.assertNotContains(r, "submitted successfully", status_code=500)
-        self.assertContains(r, "couldn", status_code=500)
+    def test_failed_transaction_does_not_change_existing_complaints(self):
+        existing = Complaint.objects.create(
+            user=self.user,
+            category=Complaint.Category.ACADEMIC,
+            title="Existing complaint",
+            description="Keep this complaint unchanged.",
+        )
+        data = self._submission_data()
+        original_save = Complaint.save
 
-    def test_double_post_creates_one_record(self):
-        data = self._data()
-        self.client.post(self.url, data)
-        self.client.post(self.url, data)      # same token again
+        def save_then_fail(complaint, *args, **kwargs):
+            original_save(complaint, *args, **kwargs)
+            raise DatabaseError("Simulated failure after insert")
+
+        with patch.object(Complaint, "save", save_then_fail):
+            response = self.client.post(self.url, data)
+
+        self.assertEqual(response.status_code, 500)
         self.assertEqual(Complaint.objects.count(), 1)
+        existing.refresh_from_db()
+        self.assertEqual(existing.title, "Existing complaint")
+        self.assertEqual(existing.description, "Keep this complaint unchanged.")
 
-    def test_retry_after_failure_works(self):
-        data = self._data()
+    def test_retry_after_failure_saves_once(self):
+        data = self._submission_data()
         with patch.object(Complaint, "save", side_effect=DatabaseError):
             self.client.post(self.url, data)
-        self.client.post(self.url, data)      # token was not consumed by the failure
+
+        response = self.client.post(self.url, data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Complaint.objects.count(), 1)
+
+    def test_replayed_token_does_not_create_duplicate(self):
+        data = self._submission_data()
+        first_response = self.client.post(self.url, data)
+        self.assertEqual(first_response.status_code, 302)
+
+        # Simulate a concurrent request that passed the session-token check
+        # before the first request consumed the token.
+        session = self.client.session
+        session["complaint_form_token"] = data["form_token"]
+        session.save()
+        replay_response = self.client.post(self.url, data)
+
+        self.assertEqual(replay_response.status_code, 302)
         self.assertEqual(Complaint.objects.count(), 1)

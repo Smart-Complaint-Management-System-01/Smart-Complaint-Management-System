@@ -210,3 +210,8 @@ dd { margin: 0; }
   dl { grid-template-columns: 1fr; }
   dd { margin-bottom: .6rem; }
 }
+
+/* FR-11 search and filter */
+.filter-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0 1rem; align-items: end; margin-bottom: 1.25rem; }
+.filter-form .alert-error { grid-column: 1 / -1; }
+.filter-actions { display: flex; gap: .5rem; margin-bottom: 1.15rem; }

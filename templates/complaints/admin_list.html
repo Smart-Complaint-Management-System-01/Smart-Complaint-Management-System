@@ -2,14 +2,25 @@
 {% block title %}Manage Complaints{% endblock %}
 {% block content %}
 <h1>All complaints</h1>
+
+<form method="get" class="card filter-form">
+  {% for error in form.non_field_errors %}<div class="alert-error" role="alert">{{ error }}</div>{% endfor %}
+  {% for field in form %}{% include "partials/form_field.html" with field=field %}{% endfor %}
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">Search</button>
+    <a class="btn" href="{% url 'complaints:admin_list' %}">Clear</a>
+  </div>
+</form>
+
 {% if page.object_list %}
 <table>
-  <thead><tr><th>ID</th><th>Submitted by</th><th>Category</th><th>Title</th><th>Status</th><th>Date</th><th></th></tr></thead>
+  <thead><tr><th>ID</th><th>Submitted by</th><th>Category</th><th>Title</th><th>Status</th><th>Assigned to</th><th>Date</th><th></th></tr></thead>
   <tbody>
   {% for c in page %}
     <tr>
       <td>{{ c.complaint_id }}</td><td>{{ c.user.email }}</td><td>{{ c.get_category_display }}</td><td>{{ c.title }}</td>
       <td><span class="badge badge-{{ c.status|lower }}">{{ c.get_status_display }}</span></td>
+      <td>{{ c.assigned_label|default:"—" }}</td>
       <td>{{ c.created_at|date:"d M Y" }}</td>
       <td><a href="{% url 'complaints:admin_detail' c.pk %}">Open</a></td>
     </tr>
@@ -18,6 +29,6 @@
 </table>
 {% include "partials/pagination.html" %}
 {% else %}
-<p class="muted">No complaints have been submitted yet.</p>
+<p class="muted">{% if querystring %}No complaints match your search.{% else %}No complaints have been submitted yet.{% endif %}</p>
 {% endif %}
 {% endblock %}
