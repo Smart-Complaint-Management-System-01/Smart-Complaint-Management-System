@@ -6,6 +6,9 @@ from . import views
 app_name = "complaints"
 
 urlpatterns = [
+    # FR-12
+    path("notifications/", views.notifications, name="notifications"),
+
     # FR-05 - Prajna
     path("complaints/", views.my_complaints, name="my_list"),
 

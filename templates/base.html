@@ -17,6 +17,9 @@
       {% else %}
         <a href="{% url 'complaints:new' %}">Lodge Complaint</a>
         <a href="{% url 'complaints:my_list' %}">My Complaints</a>
+        <a href="{% url 'complaints:notifications' %}">
+          Notifications{% if unread_notification_count %} ({{ unread_notification_count }}){% endif %}
+        </a>
       {% endif %}
       <form method="post" action="{% url 'accounts:logout' %}" class="inline-form">
         {% csrf_token %}

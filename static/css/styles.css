@@ -181,6 +181,35 @@ th, td { padding: .6rem .75rem; border-bottom: 1px solid var(--border); text-ali
 .badge-assigned { background: #dbeafe; }
 .badge-in_progress { background: #ede9fe; }
 .badge-resolved { background: #dcfce7; }
+.badge-rejected { background: #fee2e2; }
+.badge-closed { background: #f1f5f9; }
+
+/* FR-12 notification badge */
+.notif-badge {
+  display: inline-flex;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 .35rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* FR-12 notifications list */
+.notif-list { display: grid; gap: .75rem; margin-top: 1rem; }
+.notif-item {
+  padding: .85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.notif-item.unread { border-left: 4px solid var(--teal); background: #f0fafa; }
 
 @media (max-width: 600px) {
   .navbar { align-items: flex-start; flex-direction: column; gap: .35rem; padding: .85rem 1rem; }

@@ -12,8 +12,8 @@ from accounts.decorators import admin_required, role_required
 from accounts.models import User
 
 from .forms import ComplaintForm
-from .models import Complaint
-from .services import NEXT_STATUS, InvalidTransition, change_status, record_history
+from .models import Complaint, Department, Notification
+from .services import NEXT_STATUS, InvalidTransition, change_status, record_history, resolve_complaint
 from .search import ComplaintFilterForm, filter_complaints
 
 logger = logging.getLogger(__name__)
@@ -216,6 +216,17 @@ def admin_update_status(request, pk):
         )
 
     return redirect("complaints:admin_detail", pk=pk)
+
+
+# FR-12: Notifications
+@role_required(User.Role.USER)
+def notifications(request):
+    qs = Notification.objects.filter(user=request.user).select_related("complaint")
+    page = Paginator(qs, 20).get_page(request.GET.get("page"))
+    # Force evaluation before marking as read so the template sees the original is_read state
+    notifications_list = list(page.object_list)
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return render(request, "complaints/notifications.html", {"page": page, "notifications_list": notifications_list})
 
 
 # FR-10: Complaint resolution
