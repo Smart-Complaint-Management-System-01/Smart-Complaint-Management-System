@@ -1,1 +1,24 @@
-{# FR-10 stub — resolution update form (not yet implemented) #}
+{% if complaint.status != 'RESOLVED' %}
+<h2>Add update</h2>
+
+<form method="post" action="{% url 'complaints:admin_add_update' complaint.pk %}" data-once>
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="note">
+            Update note <span class="required">*</span>
+        </label>
+
+        <textarea
+            id="note"
+            name="note"
+            rows="3"
+            required
+        ></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        Add update
+    </button>
+</form>
+{% endif %}

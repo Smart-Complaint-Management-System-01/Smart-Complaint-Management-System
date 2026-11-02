@@ -1,7 +1,7 @@
-
 from django import forms
 
-from .models import Complaint
+from accounts.models import User
+from .models import Complaint, Department
 
 
 class ComplaintForm(forms.ModelForm):
@@ -55,3 +55,41 @@ class ComplaintForm(forms.ModelForm):
             )
 
         return description
+
+
+class UpdateNoteForm(forms.Form):
+    note = forms.CharField(
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        error_messages={"required": "Please enter an update note."},
+    )
+
+
+class AssignmentForm(forms.Form):
+    assigned_to = forms.ModelChoiceField(
+        queryset=User.objects.filter(
+            role=User.Role.ADMIN,
+            is_active=True,
+        ),
+        required=False,
+        empty_label="Select an administrator",
+    )
+
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.all(),
+        required=False,
+        empty_label="Select a department",
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        assigned_to = cleaned_data.get("assigned_to")
+        department = cleaned_data.get("department")
+
+        if not assigned_to and not department:
+            raise forms.ValidationError(
+                "Select an administrator, a department, or both."
+            )
+
+        return cleaned_data

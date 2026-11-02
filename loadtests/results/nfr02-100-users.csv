@@ -1,0 +1,2 @@
+requirement,started_at_utc,server,database,python,django,platform,configured_concurrency,authenticated_clients,requested_requests,completed_requests,successful_requests,failed_requests,elapsed_seconds,throughput_requests_per_second,median_latency_ms,p95_latency_ms,max_latency_ms,slow_request_threshold_ms,slow_requests,passed,status_counts
+NFR-02,2026-10-29T18:33:50.132540+00:00,Django threaded live test server,mysql,3.13.15,5.2.18,Windows-11-10.0.26300-SP0,100,100,100,100,100,0,2.4237,41.26,2237.26,2393.2,2417.81,30000,0,True,"{""200"": 100}"
