@@ -1,3 +1,4 @@
+
 import logging
 import uuid
 
@@ -12,7 +13,7 @@ from accounts.decorators import admin_required, role_required
 from accounts.models import User
 
 from .forms import AssignmentForm, ComplaintForm, UpdateNoteForm
-from .models import Complaint, Department
+from .models import Complaint, Department, Notification
 from .services import (
     NEXT_STATUS,
     InvalidAssignment,
@@ -98,3 +99,224 @@ def new_complaint(request):
                     "We couldn't save your complaint. Please try again.",
                 )
                 return render(
+                    request,
+                    "complaints/new.html",
+                    {"form": form},
+                    status=500,
+                )
+            else:
+                request.session.pop("complaint_form_token", None)
+                messages.success(
+                    request,
+                    "Your complaint was submitted successfully.",
+                )
+                return redirect(
+                    reverse(
+                        "complaints:submission_confirmation",
+                        args=[complaint.complaint_id],
+                    )
+                )
+    else:
+        form = ComplaintForm()
+        _issue_form_token(request)
+
+    return render(request, "complaints/new.html", {"form": form})
+
+
+# FR-04: Submission confirmation
+@role_required(User.Role.USER)
+def submission_confirmation(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+    _issue_form_token(request)
+    return render(
+        request,
+        "complaints/new.html",
+        {"form": ComplaintForm(), "complaint": complaint},
+    )
+
+
+# FR-05 and NFR-01: View my complaints (paginated)
+@role_required(User.Role.USER)
+def my_complaints(request):
+    queryset = Complaint.objects.filter(user=request.user).order_by("-created_at")
+    page = Paginator(queryset, 10).get_page(request.GET.get("page"))
+    return render(
+        request,
+        "complaints/my_complaints.html",
+        {"complaints": page, "page": page},
+    )
+
+
+# FR-06: User complaint detail
+@role_required(User.Role.USER)
+def complaint_detail(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+    entries = complaint.history.select_related("updated_by").all()
+    return render(
+        request,
+        "complaints/complaint_detail.html",
+        {"complaint": complaint, "entries": entries},
+    )
+
+
+# FR-06: User complaint history
+@role_required(User.Role.USER)
+def complaint_history(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+    entries = complaint.history.select_related("updated_by").all()
+    return render(
+        request,
+        "complaints/history.html",
+        {"complaint": complaint, "entries": entries},
+    )
+
+
+# FR-06: Admin complaint history
+@admin_required
+def admin_complaint_history(request, pk):
+    complaint = get_object_or_404(
+        Complaint.objects.select_related("user"),
+        pk=pk,
+    )
+    entries = complaint.history.select_related("updated_by").all()
+    return render(
+        request,
+        "complaints/admin_history.html",
+        {"complaint": complaint, "entries": entries},
+    )
+
+
+# FR-08 / FR-11: Admin list with search and filtering
+@admin_required
+def admin_list(request):
+    form = ComplaintFilterForm(request.GET or None)
+    queryset = Complaint.objects.select_related(
+        "user",
+        "assigned_to",
+        "assigned_department",
+    )
+
+    if form.is_valid():
+        queryset = filter_complaints(queryset, form.cleaned_data)
+
+    page = Paginator(queryset, 10).get_page(request.GET.get("page"))
+    params = request.GET.copy()
+    params.pop("page", None)
+
+    return render(
+        request,
+        "complaints/admin_list.html",
+        {
+            "page": page,
+            "form": form,
+            "querystring": params.urlencode(),
+        },
+    )
+
+
+@admin_required
+def admin_detail(request, pk):
+    complaint = get_object_or_404(
+        Complaint.objects.select_related("user"),
+        pk=pk,
+    )
+
+    return render(
+        request,
+        "complaints/admin_detail.html",
+        {
+            "complaint": complaint,
+            "next_status": next(
+                iter(sorted(NEXT_STATUS.get(complaint.status, set()))),
+                None,
+            ),
+            "next_statuses": sorted(
+                NEXT_STATUS.get(complaint.status, set())
+            ),
+            "history": complaint.history.select_related("updated_by"),
+            "departments": Department.objects.all(),
+            "admin_users": User.objects.filter(
+                role=User.Role.ADMIN,
+                is_active=True,
+            ),
+        },
+    )
+
+
+@admin_required
+@require_POST
+def admin_update_status(request, pk):
+    complaint = get_object_or_404(Complaint, pk=pk)
+
+    try:
+        change_status(
+            complaint,
+            request.POST.get("status"),
+            actor=request.user,
+        )
+    except InvalidTransition as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(
+            request,
+            "Status updated to " + complaint.get_status_display() + ".",
+        )
+
+    return redirect("complaints:admin_detail", pk=pk)
+
+
+# FR-12: Notifications
+@role_required(User.Role.USER)
+def notifications(request):
+    qs = Notification.objects.filter(
+        user=request.user
+    ).select_related("complaint")
+
+    page = Paginator(qs, 20).get_page(request.GET.get("page"))
+
+    # Evaluate before marking as read so the template can show "New"
+    # for notifications that were unread when this page was requested.
+    notifications_list = list(page.object_list)
+
+    Notification.objects.filter(
+        user=request.user,
+        is_read=False,
+    ).update(is_read=True)
+
+    return render(
+        request,
+        "complaints/notifications.html",
+        {
+            "page": page,
+            "notifications_list": notifications_list,
+        },
+    )
+
+
+# FR-10: Complaint resolution
+@admin_required
+@require_POST
+def admin_resolve(request, pk):
+    complaint = get_object_or_404(Complaint, pk=pk)
+
+    try:
+        resolve_complaint(
+            complaint,
+            request.POST.get("resolution_text", ""),
+            actor=request.user,
+        )
+    except (InvalidTransition, ValueError) as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Complaint marked as resolved.")
+
+    return redirect("complaints:admin_detail", pk=pk)

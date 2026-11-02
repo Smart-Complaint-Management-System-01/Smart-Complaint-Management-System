@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Notifications – Smart Complaint Management{% endblock %}
+{% block content %}
+<h1>Notifications</h1>
+{% if page.object_list %}
+  <div class="notif-list">
+    {% for n in page.object_list %}
+      <div class="notif-item{% if not n.is_read %} unread{% endif %}">
+        {% if not n.is_read %}<span class="notif-new">New</span>{% endif %}
+        <p style="margin:0">{{ n.message }}</p>
+        <small class="muted">{{ n.created_at|date:"d M Y, H:i" }} –
+          <a href="{% url 'complaints:complaint_detail' n.complaint.complaint_id %}">View complaint</a>
+        </small>
+      </div>
+    {% endfor %}
+  </div>
+  {% if page.has_other_pages %}
+    <div class="pagination">
+      {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">← Previous</a>{% endif %}
+      Page {{ page.number }} of {{ page.paginator.num_pages }}
+      {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Next →</a>{% endif %}
+    </div>
+  {% endif %}
+{% else %}
+  <p class="muted">You have no notifications.</p>
+{% endif %}
+{% endblock %}

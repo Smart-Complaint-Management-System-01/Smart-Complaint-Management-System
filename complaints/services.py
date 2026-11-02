@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from accounts.models import User
 from .models import Complaint, ComplaintHistory
+from .notifications import notify_status_change
 
 S = Complaint.Status
 
@@ -28,13 +29,17 @@ class InvalidAssignment(Exception):
 
 def record_history(complaint, previous_status, new_status, actor=None, details=""):
     """Write one ComplaintHistory row (SAD 3.9 non-repudiation)."""
-    return ComplaintHistory.objects.create(
+    entry = ComplaintHistory.objects.create(
         complaint=complaint,
         previous_status=previous_status or "",
         new_status=new_status,
         updated_by=actor,
         update_details=details,
     )
+    # FR-12: notify owner on real status transitions only
+    if previous_status and previous_status != new_status:
+        notify_status_change(complaint, new_status)
+    return entry
 
 
 def record_initial_status(complaint, actor=None, details="Complaint submitted"):
