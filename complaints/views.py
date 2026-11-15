@@ -274,6 +274,80 @@ def admin_update_status(request, pk):
     return redirect("complaints:admin_detail", pk=pk)
 
 
+# FR-09: Admin complaint assignment
+@admin_required
+@require_POST
+def admin_assign(request, pk):
+    complaint = get_object_or_404(Complaint, pk=pk)
+    form = AssignmentForm(request.POST)
+
+    if form.is_valid():
+        try:
+            assign_complaint(
+                complaint,
+                assigned_to=form.cleaned_data["assigned_to"],
+                department=form.cleaned_data["department"],
+                actor=request.user,
+            )
+        except InvalidAssignment as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(request, "Complaint assigned successfully.")
+    else:
+        for error in form.non_field_errors():
+            messages.error(request, error)
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                messages.error(request, error)
+
+    return redirect("complaints:admin_detail", pk=pk)
+
+
+# FR-07: Admin adds an update to a complaint
+@admin_required
+@require_POST
+def admin_add_update(request, pk):
+    complaint = get_object_or_404(Complaint, pk=pk)
+    form = UpdateNoteForm(request.POST)
+
+    if not form.is_valid():
+        for error in form.errors["note"]:
+            messages.error(request, error)
+    else:
+        try:
+            add_update(complaint, request.user, form.cleaned_data["note"])
+        except (InvalidTransition, ValueError) as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(request, "Update added.")
+
+    return redirect("complaints:admin_detail", pk=pk)
+
+
+# FR-07: User adds additional information to their own complaint
+@role_required(User.Role.USER)
+@require_POST
+def add_info(request, complaint_id):
+    complaint = get_object_or_404(
+        request.user.complaints,
+        complaint_id=complaint_id,
+    )
+    form = UpdateNoteForm(request.POST)
+
+    if not form.is_valid():
+        for error in form.errors["note"]:
+            messages.error(request, error)
+    else:
+        try:
+            add_update(complaint, request.user, form.cleaned_data["note"])
+        except (InvalidTransition, ValueError) as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(request, "Your information was added to the complaint.")
+
+    return redirect("complaints:complaint_detail", complaint_id=complaint_id)
+
+
 # FR-12: Notifications
 @role_required(User.Role.USER)
 def notifications(request):
