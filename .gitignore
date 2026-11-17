@@ -8,5 +8,9 @@ db.sqlite3
 .vscode/
 performance/test-users.csv
 performance/results/
+
+# Test / coverage artifacts
+.coverage
+test_db.sqlite3
 .env.*
 !.env.example
