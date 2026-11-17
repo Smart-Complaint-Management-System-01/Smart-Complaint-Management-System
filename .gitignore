@@ -8,3 +8,5 @@ db.sqlite3
 .vscode/
 performance/test-users.csv
 performance/results/
+.env.*
+!.env.example
